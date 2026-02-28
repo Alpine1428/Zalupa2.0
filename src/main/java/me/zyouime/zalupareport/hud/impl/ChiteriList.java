@@ -38,7 +38,7 @@ public class ChiteriList extends ListWidget<ChiteriList.ItemEntry> {
         matrixStack.push();
         float textScale = 1 * animProgress;
         matrixStack.scale(textScale, textScale, 1);
-        FontRenderers.mainFont.drawString(matrixStack, "Zalupa§6Reports", (this.getScreenX() + 8) / textScale, (this.getScreenY() + 7) / textScale, Color.WHITE.getRGB());
+        FontRenderers.mainFont.drawString(matrixStack, "Zalupa\u00a76Reports", (this.getScreenX() + 8) / textScale, (this.getScreenY() + 7) / textScale, Color.WHITE.getRGB());
         matrixStack.pop();
         WidgetAnim textureAnim = WidgetAnim.getAnim(((this.getScreenX() + this.width) - 15), (this.getScreenY() + 4), 10, 10, 0, (float) trashAnim.getAnimationd());
         RenderHelper.drawTexture(matrixStack, textureAnim.x(), textureAnim.y(), textureAnim.width(), textureAnim.height(), 0, 0, 512, 512, 512, 512, trash);
@@ -49,41 +49,33 @@ public class ChiteriList extends ListWidget<ChiteriList.ItemEntry> {
 
     public float getScreenX() { return MinecraftClient.getInstance().getWindow().getScaledWidth() / 2f + this.x; }
     public float getScreenY() { return MinecraftClient.getInstance().getWindow().getScaledHeight() / 2f + this.y; }
-
-    @Override
-    public float getHeight() { return currentHeight; }
+    @Override public float getHeight() { return currentHeight; }
 
     public void updateHeight() {
         this.currentHeight = Math.min(this.height, ((this.getEntryHeight() + this.spacing) * (this.entries.isEmpty() ? 1 : this.entries.size() + 1)));
         this.animHeight = Anim.fast(this.animHeight, currentHeight, 35);
     }
 
-    @Override
-    public boolean isMouseOver(double mouseX, double mouseY) {
+    @Override public boolean isMouseOver(double mouseX, double mouseY) {
         return mouseX >= this.getScreenX() && mouseX <= this.getScreenX() + width && mouseY >= this.getScreenY() && mouseY <= this.getScreenY() + this.getHeight();
     }
 
-    @Override
-    public float getScrollMax() {
+    @Override public float getScrollMax() {
         float totalHeight = (float) entries.stream().mapToDouble(entry -> entry.height).sum();
-        float allSpacing = spacing * entries.size();
-        return Math.max(0, (totalHeight + allSpacing) - (currentHeight - 18));
+        return Math.max(0, (totalHeight + spacing * entries.size()) - (currentHeight - 18));
     }
 
-    @Override
-    public void resetAnim() {
+    @Override public void resetAnim() {
         this.anim.reset(); this.trashAnim.reset();
         for (ItemEntry entry : this.entries) entry.resetAnim();
         this.animHeight = currentHeight;
     }
 
-    @Override
-    public boolean isEntryVisible(ItemEntry entry) {
+    @Override public boolean isEntryVisible(ItemEntry entry) {
         return entry.y + entry.height >= this.getScreenY() + 18 && entry.y <= this.getScreenY() + currentHeight;
     }
 
-    @Override
-    public void renderList(DrawContext context) {
+    @Override public void renderList(DrawContext context) {
         this.animScroll(); this.updateHeight();
         float startOffset = this.getScreenY() + 18;
         context.enableScissor((int) this.getScreenX(), (int) startOffset + 2, (int) (this.getScreenX() + width), (int) (this.getScreenY() + currentHeight - 2));
@@ -96,16 +88,15 @@ public class ChiteriList extends ListWidget<ChiteriList.ItemEntry> {
         context.disableScissor();
     }
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (mouseX >= (this.getScreenX() + this.width) - 15 && mouseX <= ((this.getScreenX() + this.width) - 15) + 10 && mouseY >= this.getScreenY() + 4 && mouseY <= this.getScreenY() + 4 + 10) {
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (mouseX >= (this.getScreenX() + this.width) - 15 && mouseX <= ((this.getScreenX() + this.width) - 15) + 10
+                && mouseY >= this.getScreenY() + 4 && mouseY <= this.getScreenY() + 4 + 10) {
             this.clear(); this.trashAnim.reset(); this.resetScroll(); return true;
         }
-        ChiteriList.ItemEntry entry = this.getEntryAtPos(mouseX, mouseY);
+        ItemEntry entry = this.getEntryAtPos(mouseX, mouseY);
         if (entry != null) {
             ZalupaManager manager = ZalupareportClient.getInstance().manager;
-            SlotSChiterom click = entry.getSlotSChiterom();
-            if (manager.clickPoChiteru(click)) { this.remove(entry); this.resetScroll(); }
+            if (manager.clickPoChiteru(entry.getSlotSChiterom())) { this.remove(entry); this.resetScroll(); }
             return true;
         } else {
             float listX = this.getScreenX(); float listY = this.getScreenY();
@@ -116,21 +107,17 @@ public class ChiteriList extends ListWidget<ChiteriList.ItemEntry> {
         return false;
     }
 
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (this.isDragging) { this.isDragging = false; return true; }
-        return false;
+    @Override public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (isDragging) { isDragging = false; return true; } return false;
     }
 
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (this.isDragging) {
+    @Override public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (isDragging) {
             Window window = MinecraftClient.getInstance().getWindow();
-            float scaledCenterX = window.getScaledWidth() / 2f; float scaledCenterY = window.getScaledHeight() / 2f;
-            float x = (float) mouseX - scaledCenterX - offsetX; float y = (float) mouseY - scaledCenterY - offsetY;
-            x = Math.max(-scaledCenterX, Math.min(x, scaledCenterX - this.getWidth()));
-            y = Math.max(-scaledCenterY, Math.min(y, scaledCenterY - this.getHeight()));
-            this.setX(x); this.setY(y); return true;
+            float cx = window.getScaledWidth() / 2f, cy = window.getScaledHeight() / 2f;
+            float nx = Math.max(-cx, Math.min((float) mouseX - cx - offsetX, cx - this.getWidth()));
+            float ny = Math.max(-cy, Math.min((float) mouseY - cy - offsetY, cy - this.getHeight()));
+            this.setX(nx); this.setY(ny); return true;
         }
         return false;
     }
@@ -144,36 +131,30 @@ public class ChiteriList extends ListWidget<ChiteriList.ItemEntry> {
             this.height = ZalupareportClient.getInstance().manager.list.getEntryHeight();
         }
 
-        @Override
-        public void render(DrawContext context) {
-            float animProgress = (float) anim.getAnimationd();
-            MatrixStack matrixStack = context.getMatrices();
-            WidgetAnim backAnim = WidgetAnim.getAnim(this.x + 2, this.y + 2, this.width - 4, this.height - 4, 4, animProgress);
-            RenderHelper.drawRoundedRect(matrixStack, backAnim.x(), backAnim.y(), backAnim.width(), backAnim.height(), backAnim.radius(), new Color(100, 100, 100, 96));
+        @Override public void render(DrawContext context) {
+            float ap = (float) anim.getAnimationd();
+            MatrixStack ms = context.getMatrices();
+            WidgetAnim ba = WidgetAnim.getAnim(x + 2, y + 2, width - 4, height - 4, 4, ap);
+            RenderHelper.drawRoundedRect(ms, ba.x(), ba.y(), ba.width(), ba.height(), ba.radius(), new Color(100, 100, 100, 96));
             String nick = slotSChiterom.nickName();
-            String detect = "§f(§6" + slotSChiterom.detect() + "§f)";
-            float nickWidth = FontRenderers.mainFont.getStringWidth(nick);
-            float detectWidth = FontRenderers.mainFont.getStringWidth(detect);
-            float ogranichitel = this.width - detectWidth - 20;
-            if (nickWidth > ogranichitel) {
-                char[] c = nick.toCharArray(); StringBuilder sb = new StringBuilder(); int index = 0;
-                while (index < c.length && FontRenderers.mainFont.getStringWidth(sb + "...") < ogranichitel) sb.append(c[index++]);
-                if (index < c.length) sb.append("...");
+            String detect = "\u00a7f(\u00a76" + slotSChiterom.detect() + "\u00a7f)";
+            float nw = FontRenderers.mainFont.getStringWidth(nick);
+            float dw = FontRenderers.mainFont.getStringWidth(detect);
+            float limit = width - dw - 20;
+            if (nw > limit) {
+                char[] c = nick.toCharArray(); StringBuilder sb = new StringBuilder(); int idx = 0;
+                while (idx < c.length && FontRenderers.mainFont.getStringWidth(sb + "...") < limit) sb.append(c[idx++]);
+                if (idx < c.length) sb.append("...");
                 nick = sb.toString();
             }
-            matrixStack.push();
-            float scale = 1 * animProgress; matrixStack.scale(scale, scale, 1);
-            float fontY = (this.y + 6) / scale;
-            FontRenderers.mainFont.drawString(matrixStack, nick, (this.x + 5) / scale, fontY, Color.WHITE.getRGB());
-            FontRenderers.mainFont.drawString(matrixStack, detect, (this.x - 5 + (this.width - detectWidth)) / scale, fontY, Color.WHITE.getRGB());
-            matrixStack.pop();
-            anim.update(true);
+            ms.push(); float sc = 1 * ap; ms.scale(sc, sc, 1); float fy = (y + 6) / sc;
+            FontRenderers.mainFont.drawString(ms, nick, (x + 5) / sc, fy, Color.WHITE.getRGB());
+            FontRenderers.mainFont.drawString(ms, detect, (x - 5 + (width - dw)) / sc, fy, Color.WHITE.getRGB());
+            ms.pop(); anim.update(true);
         }
 
         public void resetAnim() { anim.reset(); }
-
-        @Override
-        public boolean equals(Object obj) { return obj instanceof ItemEntry entry && entry.getSlotSChiterom().equals(slotSChiterom); }
+        @Override public boolean equals(Object obj) { return obj instanceof ItemEntry e && e.getSlotSChiterom().equals(slotSChiterom); }
         public SlotSChiterom getSlotSChiterom() { return slotSChiterom; }
     }
 }

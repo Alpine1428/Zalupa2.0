@@ -51,8 +51,7 @@ public abstract class ListWidget<E extends ListWidget.ListEntry<E>> extends Widg
 
     public void setScrollAmount(double scrollAmount) {
         int i = (scrollAmount == 1) ? -1 : 1;
-        double d = this.targetScrollAmount + i * 24;
-        this.scroll(d);
+        this.scroll(this.targetScrollAmount + i * 24);
     }
 
     public void scroll(double amount) { this.targetScrollAmount = MathHelper.clamp(amount, 0, this.getScrollMax()); }
@@ -75,17 +74,13 @@ public abstract class ListWidget<E extends ListWidget.ListEntry<E>> extends Widg
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) { return super.mouseReleased(mouseX, mouseY, button); }
-    @Override
-    public void resetAnim() {}
+    @Override public void resetAnim() {}
     public double getScrollAmount() { return scrollAmount; }
     public double getTargetScrollAmount() { return targetScrollAmount; }
     public float getEntryHeight() { return entryHeight; }
 
     public static class ListEntry<T extends ListEntry<T>> {
         public float x, y, width, height;
-        public ListEntry() {}
         public void render(DrawContext context) {}
         public void updatePos(float x, float y, float width, float height) { this.x = x; this.y = y; this.width = width; this.height = height; }
         public boolean mouseClicked(double mouseX, double mouseY, int button) { return isMouseOver(mouseX, mouseY); }

@@ -41,7 +41,8 @@ public class RenderHelper {
     }
 
     public static void drawRoundedRect(MatrixStack matrixStack, float x, float y, float width, float height, float radius, Color color) {
-        setupRender(); drawRoundedRectWithoutSetup(matrixStack, x, y, width, height, radius, color); endRender();
+        setupRender(); RECTANGLE_SHADER.bind(); RECTANGLE_SHADER.setUniforms(x, y, width, height, radius, color);
+        drawShader(matrixStack, x, y, width, height); endRender();
     }
 
     public static void drawRoundedRectWithoutSetup(MatrixStack matrixStack, float x, float y, float width, float height, float radius, Color color) {

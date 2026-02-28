@@ -1,7 +1,6 @@
 package me.zyouime.zalupareport.mixin;
 
 import me.zyouime.zalupareport.client.ZalupareportClient;
-import me.zyouime.zalupareport.manager.AutoCallManager;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.gui.hud.MessageIndicator;
 import net.minecraft.network.message.MessageSignatureData;

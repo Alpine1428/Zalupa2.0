@@ -57,7 +57,7 @@ public class SecretMenuScreen extends Screen {
 
         RenderHelper.drawRoundedRect(matrixStack, buttonX, buttonY, buttonW, buttonH, 4, btnColor);
 
-        String text = "АвтоВызов: " + (config.autoCall ? "§aВКЛ" : "§cВЫКЛ");
+        String text = "АвтоВызов: " + (config.autoCall ? "ВКЛ" : "ВЫКЛ");
         FontRenderers.mainFont.drawCenteredString(matrixStack, text,
                 buttonX + buttonW / 2f, buttonY + 8, Color.WHITE.getRGB());
 

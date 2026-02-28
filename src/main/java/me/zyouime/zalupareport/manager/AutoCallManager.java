@@ -125,13 +125,11 @@ public class AutoCallManager {
             sendMsg("Скопировал ник " + foundNick + " и кликнул по слоту с читером нах!");
             state = State.WAITING_TAKE_MSG;
             stateStartTime = System.currentTimeMillis();
-            // Сразу переходим к spy через задержку
             scheduleDelayed(() -> {
                 state = State.DOING_SPY;
                 doSpy();
             }, 1000);
         } else {
-            // Проверяем следующую страницу
             boolean hasNextPage = false;
             if (items.size() > 45) {
                 ItemStack slot45 = items.get(45);
@@ -141,7 +139,6 @@ public class AutoCallManager {
             }
 
             if (hasNextPage) {
-                // Кликаем слот 53 (54-й слот, индексация с 0)
                 client.interactionManager.clickSlot(
                         client.player.currentScreenHandler.syncId,
                         53, 0, SlotActionType.PICKUP, client.player);

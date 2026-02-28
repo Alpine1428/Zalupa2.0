@@ -1,11 +1,22 @@
 {
-  "schemaVersion": 1, "id": "zalupareport", "version": "${version}", "name": "ZalupaReport",
-  "description": ":D", "authors": ["zyouime13"], "contact": {}, "license": "MIT",
-  "icon": "assets/zalupareport/icon.png", "environment": "client",
+  "schemaVersion": 1,
+  "id": "zalupareport",
+  "version": "${version}",
+  "name": "ZalupaReport",
+  "description": ":D",
+  "authors": ["zyouime13"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/zalupareport/icon.png",
+  "environment": "client",
   "entrypoints": {
     "client": ["me.zyouime.zalupareport.client.ZalupareportClient"],
     "modmenu": ["me.zyouime.zalupareport.modmenu.ModMenuImpl"]
   },
   "mixins": ["zalupareport.mixins.json"],
-  "depends": { "fabricloader": ">=${loader_version}", "fabric": "*", "minecraft": "${minecraft_version}" }
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
 }
