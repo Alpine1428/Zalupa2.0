@@ -26,7 +26,8 @@ public class ZalupareportClient implements ClientModInitializer {
     public AutoCallManager autoCallManager;
     public KeyBinding bindToStart = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "\u041f\u043e\u0438\u0441\u043a \u0447\u0438\u0442\u0435\u0440\u043e\u0432 \u043d\u0430\u0445",
-            InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "\u0417\u0430\u043b\u0443\u043f\u0430 \u0420\u0435\u043f\u043e\u0440\u0442"));
+            InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
+            "\u0417\u0430\u043b\u0443\u043f\u0430 \u0420\u0435\u043f\u043e\u0440\u0442"));
 
     @Override
     public void onInitializeClient() {

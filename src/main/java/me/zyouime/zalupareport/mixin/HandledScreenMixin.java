@@ -24,7 +24,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     private ModConfig config = ZalupareportClient.getInstance().config;
     private ZalupaManager manager = ZalupareportClient.getInstance().manager;
     private ChiteriList list = manager.list;
-
     protected HandledScreenMixin(Text title) { super(title); }
 
     @Inject(method = "<init>", at = @At("RETURN"))
@@ -32,31 +31,15 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         if (title.getString().equals(config.screenName)) manager.reportScreen = true;
         else if (manager.reportScreen) manager.closeScreen();
     }
-
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void mouseClicked(double mx, double my, int b, CallbackInfoReturnable<Boolean> cir) {
-        if (manager.reportScreen && list.mouseClicked(mx, my, b)) cir.setReturnValue(true);
-    }
-
+    private void mouseClicked(double mx, double my, int b, CallbackInfoReturnable<Boolean> cir) { if (manager.reportScreen && list.mouseClicked(mx, my, b)) cir.setReturnValue(true); }
     @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
-    private void mouseDragged(double mx, double my, int b, double dx, double dy, CallbackInfoReturnable<Boolean> cir) {
-        if (manager.reportScreen && list.mouseDragged(mx, my, b, dx, dy)) cir.setReturnValue(true);
-    }
-
+    private void mouseDragged(double mx, double my, int b, double dx, double dy, CallbackInfoReturnable<Boolean> cir) { if (manager.reportScreen && list.mouseDragged(mx, my, b, dx, dy)) cir.setReturnValue(true); }
     @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
-    private void mouseReleased(double mx, double my, int b, CallbackInfoReturnable<Boolean> cir) {
-        if (manager.reportScreen && list.mouseReleased(mx, my, b)) cir.setReturnValue(true);
-    }
-
+    private void mouseReleased(double mx, double my, int b, CallbackInfoReturnable<Boolean> cir) { if (manager.reportScreen && list.mouseReleased(mx, my, b)) cir.setReturnValue(true); }
     @Inject(method = "render", at = @At("TAIL"))
-    private void render(DrawContext ctx, int mx, int my, float d, CallbackInfo ci) {
-        if (manager.reportScreen) list.render(ctx, mx, my);
-    }
-
-    @Override public boolean mouseScrolled(double mx, double my, double a) {
-        if (manager.reportScreen) return list.mouseScrolled(mx, my, a);
-        return super.mouseScrolled(mx, my, a);
-    }
+    private void render(DrawContext ctx, int mx, int my, float d, CallbackInfo ci) { if (manager.reportScreen) list.render(ctx, mx, my); }
+    @Override public boolean mouseScrolled(double mx, double my, double a) { if (manager.reportScreen) return list.mouseScrolled(mx, my, a); return super.mouseScrolled(mx, my, a); }
 
     @Inject(method = "keyPressed", at = @At("HEAD"))
     private void keyPressed(int key, int scan, int mod, CallbackInfoReturnable<Boolean> cir) {
@@ -70,7 +53,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                 net.minecraft.client.MinecraftClient.getInstance().setScreen(new SecretMenuScreen());
         }
     }
-
     @Inject(method = "close", at = @At("HEAD"))
     private void close(CallbackInfo ci) { manager.closeScreen(); }
 }

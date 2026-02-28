@@ -56,8 +56,8 @@ public class ZalupaManager {
                     boolean all = allMin < pt.allTime, last = lastMin < pt.activeTime;
                     boolean onlyActive = pt.checkActiveTime && !pt.checkAllTime;
                     boolean onlyAll = !pt.checkActiveTime && pt.checkAllTime;
-                    boolean checkBoth = pt.checkActiveTime && pt.checkAllTime && (!all || !last);
-                    if ((onlyActive && !last) || (onlyAll && !all) || checkBoth) continue;
+                    boolean both = pt.checkActiveTime && pt.checkAllTime && (!all || !last);
+                    if ((onlyActive && !last) || (onlyAll && !all) || both) continue;
                     ChiteriList.ItemEntry entry = new ChiteriList.ItemEntry(new SlotSChiterom(nickName, detect));
                     if (!list.contains(entry)) list.addEntry(entry);
                     if (!found) found = true;

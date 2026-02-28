@@ -1,22 +1,35 @@
 name: Build Mod
+
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v3
-      - run: chmod +x gradlew
-      - run: ./gradlew build
-      - uses: actions/upload-artifact@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
         with:
-          name: ZalupaReport-mod
+          name: ZalupaReport-v1.3.0
           path: build/libs/*.jar
-          retention-days: 30
+          retention-days: 90
