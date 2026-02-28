@@ -20,13 +20,13 @@ import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public class ZalupareportClient implements ClientModInitializer {
-
     private static ZalupareportClient instance;
     public ModConfig config;
     public ZalupaManager manager;
     public AutoCallManager autoCallManager;
     public KeyBinding bindToStart = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "Поиск читеров нах", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "Залупа Репорт"));
+            "\u041f\u043e\u0438\u0441\u043a \u0447\u0438\u0442\u0435\u0440\u043e\u0432 \u043d\u0430\u0445",
+            InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "\u0417\u0430\u043b\u0443\u043f\u0430 \u0420\u0435\u043f\u043e\u0440\u0442"));
 
     @Override
     public void onInitializeClient() {
@@ -35,12 +35,12 @@ public class ZalupareportClient implements ClientModInitializer {
         config = AutoConfig.getConfigHolder(ModConfig.class).getConfig();
         manager = new ZalupaManager(this);
         autoCallManager = new AutoCallManager(this);
-        this.registerEvents();
+        registerEvents();
     }
 
     private void registerEvents() {
-        AutoConfig.getConfigHolder(ModConfig.class).registerSaveListener((configHolder, modConfig) -> {
-            manager.list.setHeight(modConfig.height);
+        AutoConfig.getConfigHolder(ModConfig.class).registerSaveListener((h, c) -> {
+            manager.list.setHeight(c.height);
             return ActionResult.PASS;
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
@@ -48,17 +48,12 @@ public class ZalupareportClient implements ClientModInitializer {
             autoCallManager.reset();
         });
         CoreShaderRegistrationCallback.EVENT.register(context -> {
-            String namespace = "zalupareport";
-            context.register(new Identifier(namespace, "rectangle"), VertexFormats.POSITION, shader -> {
-                MyShaders.RECTANGLE_SHADER = new RectangleShader(shader);
-            });
-            context.register(new Identifier(namespace, "arc"), VertexFormats.POSITION, shader -> {
-                MyShaders.ARC_SHADER = new ArcShader(shader);
-            });
+            context.register(new Identifier("zalupareport", "rectangle"), VertexFormats.POSITION,
+                    shader -> MyShaders.RECTANGLE_SHADER = new RectangleShader(shader));
+            context.register(new Identifier("zalupareport", "arc"), VertexFormats.POSITION,
+                    shader -> MyShaders.ARC_SHADER = new ArcShader(shader));
         });
     }
 
-    public static ZalupareportClient getInstance() {
-        return instance;
-    }
+    public static ZalupareportClient getInstance() { return instance; }
 }

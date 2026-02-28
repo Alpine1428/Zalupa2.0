@@ -3,13 +3,12 @@ package me.zyouime.zalupareport.config;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
-
 import java.util.List;
 
 @Config(name = "zalupareport")
 public class ModConfig implements ConfigData {
 
-    public String screenName = "Жалобы на игроков";
+    public String screenName = "\u0416\u0430\u043b\u043e\u0431\u044b \u043d\u0430 \u0438\u0433\u0440\u043e\u043a\u043e\u0432";
     @ConfigEntry.Gui.CollapsibleObject
     public PlayTime playTime = new PlayTime();
     public boolean clearIsClose = true;
@@ -23,12 +22,7 @@ public class ModConfig implements ConfigData {
     public boolean autoSpy = false;
     @ConfigEntry.Gui.Excluded
     public boolean autoCall = false;
-    public List<String> detects = List.of(
-            "CL-BP",
-            "I-B",
-            "MT-PC",
-            "AimANLS"
-    );
+    public List<String> detects = List.of("CL-BP", "I-B", "MT-PC", "AimANLS");
 
     public static class PlayTime {
         public int allTime = 120;
