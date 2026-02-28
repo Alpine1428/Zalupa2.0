@@ -1,0 +1,14 @@
+{
+  "text.autoconfig.zalupareport.option.screenName": "Report list screen title",
+  "text.autoconfig.zalupareport.option.playTime": "Playtime check setting",
+  "text.autoconfig.zalupareport.option.playTime.allTime": "Total time in game (minutes)",
+  "text.autoconfig.zalupareport.option.playTime.checkAllTime": "Check total time in game",
+  "text.autoconfig.zalupareport.option.playTime.activeTime": "Total active time in game (minutes)",
+  "text.autoconfig.zalupareport.option.playTime.checkActiveTime": "Check total active time in game",
+  "text.autoconfig.zalupareport.option.clearIsClose": "Clear if close report-list",
+  "text.autoconfig.zalupareport.option.height": "List height",
+  "text.autoconfig.zalupareport.option.printPlayTime": "Print playtime after take report",
+  "text.autoconfig.zalupareport.option.detects": "Keywords in complaint description",
+  "text.autoconfig.zalupareport.title": "Config",
+  "text.autoconfig.zalupareport.option.autoSpy": "Auto /spy"
+}

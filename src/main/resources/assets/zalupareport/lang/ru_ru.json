@@ -1,0 +1,14 @@
+{
+  "text.autoconfig.zalupareport.option.screenName": "Название экрана репортлист",
+  "text.autoconfig.zalupareport.option.playTime": "Настройка проверки плейтайма",
+  "text.autoconfig.zalupareport.option.playTime.allTime": "Общее время в игре (в минутах)",
+  "text.autoconfig.zalupareport.option.playTime.checkAllTime": "Проверять общее время в игре",
+  "text.autoconfig.zalupareport.option.playTime.activeTime": "Общее время активности в игре (в минутах)",
+  "text.autoconfig.zalupareport.option.playTime.checkActiveTime": "Проверять общее время активности в игре",
+  "text.autoconfig.zalupareport.option.clearIsClose": "Очищать после закрытия репорт-листа",
+  "text.autoconfig.zalupareport.option.detects": "Ключевые слова в описании жалобы",
+  "text.autoconfig.zalupareport.option.printPlayTime": "Выводить плейтайм после взятия репорта",
+  "text.autoconfig.zalupareport.option.height": "Макс. высота",
+  "text.autoconfig.zalupareport.title": "Конфиг",
+  "text.autoconfig.zalupareport.option.autoSpy": "Авто /spy"
+}
