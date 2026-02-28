@@ -14,12 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AutoCallManager {
-
-    public enum State {
-        IDLE, SEARCHING, DOING_SPY, DOING_FIND, CONNECTING_SERVER,
-        DOING_PLAYTIME, CHECKING_PLAYTIME_LOOP, WAITING_SPYFRZ,
-        CLOSING_STEP1, CLOSING_STEP2, CLOSING_STEP3, REOPENING
-    }
+    public enum State { IDLE, SEARCHING, DOING_SPY, DOING_FIND, CONNECTING_SERVER, DOING_PLAYTIME, CHECKING_PLAYTIME_LOOP, WAITING_SPYFRZ, CLOSING_STEP1, CLOSING_STEP2, CLOSING_STEP3, REOPENING }
 
     private final ModConfig config;
     private final MinecraftClient client = MinecraftClient.getInstance();
@@ -36,63 +31,59 @@ public class AutoCallManager {
     private boolean waitFind, waitPt, foundAny;
 
     public AutoCallManager(ZalupareportClient mod) { config = mod.config; }
+    public void reset() { state=State.IDLE; currentNick=null; ptStart=0; waitFind=false; waitPt=false; foundAny=false; }
 
-    public void reset() { state = State.IDLE; currentNick = null; ptStart = 0; waitFind = false; waitPt = false; foundAny = false; }
-
-    public void startAutoCall() {
-        if (!config.autoCall) return;
-        state = State.SEARCHING; foundAny = false; search();
-    }
+    public void startAutoCall() { if(!config.autoCall)return; state=State.SEARCHING; foundAny=false; search(); }
 
     private void search() {
-        if (client.player == null || client.player.currentScreenHandler == null) { msg("\u041e\u0448\u0438\u0431\u043a\u0430: \u043d\u0435\u0442 \u043c\u0435\u043d\u044e"); state = State.IDLE; return; }
-        List<ItemStack> items = client.player.currentScreenHandler.getStacks();
-        int slot = -1; String nick = null;
-        for (int i = 0; i < Math.min(45, items.size()); i++) {
-            ItemStack is = items.get(i);
-            if (is.isEmpty() || is.getItem().equals(Items.SKELETON_SKULL)) continue;
-            if (is.getNbt() == null || is.getNbt().isEmpty()) continue;
-            if (is.getNbt().getCompound("display") == null) continue;
-            NbtElement nbt = is.getNbt().getCompound("display").get("Lore");
-            if (nbt == null) continue;
-            String lore = nbt.asString();
-            Matcher nm = nickPattern.matcher(is.getName().getString());
-            String det = config.detects.stream().filter(s -> !s.isEmpty() && lore.toLowerCase().contains(s.toLowerCase())).findFirst().orElse("zalupa");
-            if (nm.find() && (config.detects.isEmpty() || !det.equals("zalupa"))) { slot = i; nick = nm.group(1); break; }
+        if(client.player==null||client.player.currentScreenHandler==null){msg("Error: no menu");state=State.IDLE;return;}
+        List<ItemStack> items=client.player.currentScreenHandler.getStacks();
+        int slot=-1; String nick=null;
+        for(int i=0;i<Math.min(45,items.size());i++){
+            ItemStack is=items.get(i);
+            if(is.isEmpty()||is.getItem().equals(Items.SKELETON_SKULL))continue;
+            if(is.getNbt()==null||is.getNbt().isEmpty())continue;
+            if(is.getNbt().getCompound("display")==null)continue;
+            NbtElement nbt=is.getNbt().getCompound("display").get("Lore");
+            if(nbt==null)continue;
+            String lore=nbt.asString();
+            Matcher nm=nickPattern.matcher(is.getName().getString());
+            String det=config.detects.stream().filter(s->!s.isEmpty()&&lore.toLowerCase().contains(s.toLowerCase())).findFirst().orElse("zalupa");
+            if(nm.find()&&(config.detects.isEmpty()||!det.equals("zalupa"))){slot=i;nick=nm.group(1);break;}
         }
-        if (slot != -1 && nick != null) {
-            foundAny = true; currentNick = nick;
-            client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, slot, 0, SlotActionType.PICKUP, client.player);
+        if(slot!=-1&&nick!=null){
+            foundAny=true;currentNick=nick;
+            client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId,slot,0,SlotActionType.PICKUP,client.player);
             client.keyboard.setClipboard(nick);
-            msg("\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043b \u043d\u0438\u043a " + nick + " \u0438 \u043a\u043b\u0438\u043a\u043d\u0443\u043b \u043f\u043e \u0441\u043b\u043e\u0442\u0443 \u0441 \u0447\u0438\u0442\u0435\u0440\u043e\u043c \u043d\u0430\u0445!");
-            delay(() -> { state = State.DOING_SPY; doSpy(); }, 1000);
+            msg("\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043b "+nick);
+            delay(()->{state=State.DOING_SPY;doSpy();},1000);
         } else {
-            boolean next = items.size() > 45 && items.get(45) != null && !items.get(45).isEmpty();
-            if (next) { client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 53, 0, SlotActionType.PICKUP, client.player); delay(this::search, 1000); }
-            else { if (!foundAny) { if (client.player != null) client.player.closeHandledScreen(); msg("\u0420\u0435\u043f\u043e\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b"); } state = State.IDLE; }
+            boolean next=items.size()>45&&items.get(45)!=null&&!items.get(45).isEmpty();
+            if(next){client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId,53,0,SlotActionType.PICKUP,client.player);delay(this::search,1000);}
+            else{if(!foundAny){if(client.player!=null)client.player.closeHandledScreen();msg("\u0420\u0435\u043f\u043e\u0440\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b");}state=State.IDLE;}
         }
     }
 
     public void onChatMessage(String message) {
-        if (state == State.IDLE || !config.autoCall) return;
-        if (state == State.DOING_FIND && waitFind) { Matcher m = findPattern.matcher(message); if (m.find()) { waitFind = false; connect(m.group(1)); } }
-        if ((state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP) && waitPt) {
-            Matcher m = activityPattern.matcher(message);
-            if (m.find()) { waitPt = false; int h = m.group(1)!=null?Integer.parseInt(m.group(1)):0; int min = m.group(2)!=null?Integer.parseInt(m.group(2)):0; int sec = Integer.parseInt(m.group(3)); handlePt(h*3600+min*60+sec); }
+        if(state==State.IDLE||!config.autoCall)return;
+        if(state==State.DOING_FIND&&waitFind){Matcher m=findPattern.matcher(message);if(m.find()){waitFind=false;connect(m.group(1));}}
+        if((state==State.DOING_PLAYTIME||state==State.CHECKING_PLAYTIME_LOOP)&&waitPt){
+            Matcher m=activityPattern.matcher(message);
+            if(m.find()){waitPt=false;int h=m.group(1)!=null?Integer.parseInt(m.group(1)):0;int min=m.group(2)!=null?Integer.parseInt(m.group(2)):0;int sec=Integer.parseInt(m.group(3));handlePt(h*3600+min*60+sec);}
         }
-        if (state == State.WAITING_SPYFRZ) { String l = message.toLowerCase(); if (l.contains("hm sban")||l.contains("banip")||l.contains("hm unfrz")) { state = State.CLOSING_STEP1; delay(this::close1, 500); } }
+        if(state==State.WAITING_SPYFRZ){String l=message.toLowerCase();if(l.contains("hm sban")||l.contains("banip")||l.contains("hm unfrz")){state=State.CLOSING_STEP1;delay(this::close1,500);}}
     }
 
-    private void doSpy() { if (currentNick==null){state=State.IDLE;return;} cmd("hm spy "+currentNick); state=State.DOING_FIND; delay(this::doFind, 500); }
-    private void doFind() { if (currentNick==null){state=State.IDLE;return;} waitFind=true; cmd("find "+currentNick); delay(()->{if(waitFind&&state==State.DOING_FIND){waitFind=false;msg("\u041d\u0435 \u043d\u0430\u0448\u0435\u043b \u0441\u0435\u0440\u0432\u0435\u0440 "+currentNick);state=State.IDLE;}},10000); }
-    private void connect(String srv) {
-        String c=null; Matcher m1=lanarchyP.matcher(srv),m2=l2anarchyP.matcher(srv),m3=anarchyP.matcher(srv);
-        if(m1.find())c="ln "+m1.group(1); else if(m2.find())c="ln120 "+m2.group(1); else if(m3.find())c="cn "+m3.group(1);
-        if(c!=null){cmd(c);state=State.CONNECTING_SERVER;delay(this::startPt,10000);} else{msg("\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0441\u0435\u0440\u0432\u0435\u0440: "+srv);state=State.IDLE;}
+    private void doSpy(){if(currentNick==null){state=State.IDLE;return;}cmd("hm spy "+currentNick);state=State.DOING_FIND;delay(this::doFind,500);}
+    private void doFind(){if(currentNick==null){state=State.IDLE;return;}waitFind=true;cmd("find "+currentNick);delay(()->{if(waitFind&&state==State.DOING_FIND){waitFind=false;msg("Server not found");state=State.IDLE;}},10000);}
+    private void connect(String srv){
+        String c=null;Matcher m1=lanarchyP.matcher(srv),m2=l2anarchyP.matcher(srv),m3=anarchyP.matcher(srv);
+        if(m1.find())c="ln "+m1.group(1);else if(m2.find())c="ln120 "+m2.group(1);else if(m3.find())c="cn "+m3.group(1);
+        if(c!=null){cmd(c);state=State.CONNECTING_SERVER;delay(this::startPt,10000);}else{msg("Unknown server: "+srv);state=State.IDLE;}
     }
     private void startPt(){state=State.DOING_PLAYTIME;ptStart=System.currentTimeMillis();sendPt();}
     private void sendPt(){if(currentNick==null){state=State.IDLE;return;}waitPt=true;cmd("playtime "+currentNick);}
-    private void handlePt(int sec) {
+    private void handlePt(int sec){
         if(sec<7){cmd("hm spyfrz");state=State.WAITING_SPYFRZ;return;}
         if(state==State.DOING_PLAYTIME){state=State.CHECKING_PLAYTIME_LOOP;ptStart=System.currentTimeMillis();}
         if(System.currentTimeMillis()-ptStart<30000)delay(()->{if(state==State.CHECKING_PLAYTIME_LOOP)sendPt();},3000);

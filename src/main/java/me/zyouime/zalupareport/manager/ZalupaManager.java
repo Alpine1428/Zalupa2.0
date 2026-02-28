@@ -81,7 +81,7 @@ public class ZalupaManager {
             if (config.autoSpy) spy(s.nickName());
             return true;
         }
-        sendMsg("\u041d\u0435 \u043d\u0430\u0448\u0435\u043b \u0441\u043b\u043e\u0442 \u0441 \u044d\u0442\u0438\u043c \u043d\u0438\u043a\u043e\u043c");
+        sendMsg("\u041d\u0435 \u043d\u0430\u0448\u0435\u043b \u0441\u043b\u043e\u0442");
         return false;
     }
 
@@ -104,7 +104,6 @@ public class ZalupaManager {
         }
     }
 
-    // ИСПРАВЛЕНО: /hm spy вместо .spy
     private void spy(String nick) {
         client.setScreen(null);
         ChatScreen screen = new ChatScreen("");

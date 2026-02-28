@@ -12,10 +12,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ChatHud.class)
 public class ChatMessageMixin {
-    @Inject(method = "addMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/message/MessageSignatureData;Lnet/minecraft/client/gui/hud/MessageIndicator;)V", at = @At("HEAD"))
-    private void onAddMessage(Text message, MessageSignatureData sig, MessageIndicator ind, CallbackInfo ci) {
-        ZalupareportClient inst = ZalupareportClient.getInstance();
-        if (inst != null && inst.autoCallManager != null)
-            inst.autoCallManager.onChatMessage(message.getString());
+    @Inject(method="addMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/message/MessageSignatureData;Lnet/minecraft/client/gui/hud/MessageIndicator;)V",at=@At("HEAD"))
+    private void onAddMessage(Text message,MessageSignatureData sig,MessageIndicator ind,CallbackInfo ci){
+        ZalupareportClient inst=ZalupareportClient.getInstance();
+        if(inst!=null&&inst.autoCallManager!=null)inst.autoCallManager.onChatMessage(message.getString());
     }
 }
