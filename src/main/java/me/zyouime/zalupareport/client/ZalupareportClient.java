@@ -8,7 +8,9 @@ import me.zyouime.zalupareport.manager.AutoCallManager;
 import me.zyouime.zalupareport.render.shader.ArcShader;
 import me.zyouime.zalupareport.render.shader.MyShaders;
 import me.zyouime.zalupareport.render.shader.RectangleShader;
+import me.zyouime.zalupareport.screen.SecretMenuScreen;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.CoreShaderRegistrationCallback;
@@ -24,9 +26,16 @@ public class ZalupareportClient implements ClientModInitializer {
     public ModConfig config;
     public ZalupaManager manager;
     public AutoCallManager autoCallManager;
+    
+    // Регистрируем кнопку официально
     public KeyBinding bindToStart = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "\u041f\u043e\u0438\u0441\u043a \u0447\u0438\u0442\u0435\u0440\u043e\u0432 \u043d\u0430\u0445",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
+            "\u0417\u0430\u043b\u0443\u043f\u0430 \u0420\u0435\u043f\u043e\u0440\u0442"));
+
+    public KeyBinding secretMenuBind = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            "\u0421\u0435\u043a\u0440\u0435\u0442\u043d\u043e\u0435 \u043c\u0435\u043d\u044e",
+            InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_CONTROL,
             "\u0417\u0430\u043b\u0443\u043f\u0430 \u0420\u0435\u043f\u043e\u0440\u0442"));
 
     @Override
@@ -44,10 +53,21 @@ public class ZalupareportClient implements ClientModInitializer {
             manager.list.setHeight(c.height);
             return ActionResult.PASS;
         });
+        
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             manager.resetAll();
             autoCallManager.reset();
         });
+
+        // САМЫЙ НАДЕЖНЫЙ СПОСОБ ОТКРЫТЬ МЕНЮ
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (secretMenuBind.wasPressed()) {
+                if (client.player != null) { // Открываем только если игрок в мире
+                    client.setScreen(new SecretMenuScreen());
+                }
+            }
+        });
+
         CoreShaderRegistrationCallback.EVENT.register(context -> {
             context.register(new Identifier("zalupareport", "rectangle"), VertexFormats.POSITION,
                     shader -> MyShaders.RECTANGLE_SHADER = new RectangleShader(shader));

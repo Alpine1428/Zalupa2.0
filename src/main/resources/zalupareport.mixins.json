@@ -9,8 +9,7 @@
     "HandledScreenMixin",
     "INativeImageMixin",
     "KeybindingAccessor",
-    "MinecraftClientMixin",
-    "SecretKeyMixin"
+    "MinecraftClientMixin"
   ],
   "injectors": { "defaultRequire": 1 },
   "overwrites": { "requireAnnotations": true }

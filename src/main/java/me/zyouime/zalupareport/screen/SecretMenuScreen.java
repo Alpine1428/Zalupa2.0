@@ -18,7 +18,7 @@ public class SecretMenuScreen extends Screen {
 
     @Override
     protected void init() {
-        // Добавляем обычную кнопку Minecraft
+        // Кнопка по центру
         this.addDrawableChild(ButtonWidget.builder(
             Text.of(getButtonText()),
             button -> {
@@ -37,11 +37,14 @@ public class SecretMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context); // Затемнение фона
-        super.render(context, mouseX, mouseY, delta); // Рендер кнопок
+        // 1. Принудительно рисуем черный полупрозрачный фон
+        context.fill(0, 0, this.width, this.height, 0xAA000000);
         
-        // Рисуем заголовок по центру
-        context.drawCenteredTextWithShadow(this.textRenderer, "Секретное меню", this.width / 2, this.height / 2 - 40, 0xFFFFFF);
+        // 2. Рисуем кнопки
+        super.render(context, mouseX, mouseY, delta);
+        
+        // 3. Рисуем текст
+        context.drawCenteredTextWithShadow(this.textRenderer, "§6Секретное меню ZalupaReport", this.width / 2, this.height / 2 - 40, 0xFFFFFF);
     }
 
     @Override
