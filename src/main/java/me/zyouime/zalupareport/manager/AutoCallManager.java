@@ -114,7 +114,8 @@ public class AutoCallManager {
             
             // Сразу переходим к SPY
             state = State.DOING_SPY;
-            delay(this::doSpy, 600); // Небольшая задержка перед spy
+            // Небольшая задержка перед отправкой команды в чат
+            delay(this::doSpy, 600); 
         } else {
             boolean next = items.size() > 45 && items.get(45) != null && !items.get(45).isEmpty();
             if (next) {
@@ -135,7 +136,6 @@ public class AutoCallManager {
     public void onChatMessage(String message) {
         if (state == State.IDLE) return;
 
-        // Поиск сервера (/find)
         if (state == State.DOING_FIND && waitFind) {
             Matcher m = findPattern.matcher(message);
             if (m.find()) {
@@ -144,7 +144,6 @@ public class AutoCallManager {
             }
         }
 
-        // Плейтайм (/playtime) - только для AutoCheck
         if (config.autoCheck && (state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP) && waitPt) {
             if (message.contains("Последняя активность")) {
                 Matcher m = activityPattern.matcher(message);
@@ -158,14 +157,12 @@ public class AutoCallManager {
             }
         }
 
-        // Ожидание бана - только для AutoCheck
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             String lower = message.toLowerCase();
             if (lower.contains("/hm sban") || lower.contains("/banip") || 
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
                 
-                msg("Команда обнаружена. Закрываю репорт...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -174,17 +171,23 @@ public class AutoCallManager {
 
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
-        // Отправляем /hm spy
+        
+        // 1. Пишем /hm spy
         cmd("hm spy " + currentNick);
         
         state = State.DOING_FIND;
-        delay(this::doFind, 500);
+        
+        // 2. Ждем 3 секунды перед переходом к поиску сервера
+        delay(this::doFind, 3000);
     }
 
     private void doFind() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
+        
+        // 3. Пишем /find
         cmd("find " + currentNick);
+        
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
@@ -207,17 +210,17 @@ public class AutoCallManager {
         if (c != null) {
             cmd(c);
             
-            // Если режим "АвтоВызов" (1 раз) -> Стоп
+            // Если АвтоВызов (1 раз) -> СТОП здесь
             if (config.autoCall) {
                 msg("Перешел к игроку. АвтоВызов завершен.");
                 state = State.IDLE;
                 return;
             }
 
-            // Если режим "АвтоПроверка" -> Ждем 10 сек и проверяем плейтайм
+            // Если АвтоПроверка -> Ждем 10 сек
             if (config.autoCheck) {
                 state = State.CONNECTING_SERVER;
-                delay(this::startPt, 10000); // 10 секунд пауза
+                delay(this::startPt, 10000);
             }
         } else {
             msg("Неизвестный сервер: " + srv);
@@ -239,24 +242,20 @@ public class AutoCallManager {
 
     private void handlePt(int sec) {
         if (sec < 7) {
-            // Активен -> заморозить
             cmd("hm spyfrz");
             state = State.WAITING_SPYFRZ;
             msg("Активен! Заморозил. Жду бана...");
         } else {
-            // АФК -> цикл проверки
             if (state == State.DOING_PLAYTIME) {
                 state = State.CHECKING_PLAYTIME_LOOP;
                 ptStart = System.currentTimeMillis();
             }
             
             if (System.currentTimeMillis() - ptStart < 30000) {
-                // Повтор через 3 сек
                 delay(() -> {
                     if (state == State.CHECKING_PLAYTIME_LOOP) sendPt();
                 }, 3000);
             } else {
-                // Тайм-аут (АФК 30 сек)
                 msg("Игрок афк. Закрываю...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
@@ -272,7 +271,6 @@ public class AutoCallManager {
 
     private void close2() {
         if (client.player == null || client.player.currentScreenHandler == null) { state = State.IDLE; return; }
-        // Клик по слоту 47 (большой сундук)
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 47, 0, SlotActionType.PICKUP, client.player);
         state = State.CLOSING_STEP3;
         delay(this::close3, 1500);
@@ -280,11 +278,10 @@ public class AutoCallManager {
 
     private void close3() {
         if (client.player == null || client.player.currentScreenHandler == null) { state = State.IDLE; return; }
-        // Клик по слоту 16 (маленький сундук)
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
         
         delay(() -> {
-            chat("-"); // Пишем минус в чат
+            chat("-");
             state = State.REOPENING;
             delay(this::reopen, 1500);
         }, 500);
@@ -296,13 +293,12 @@ public class AutoCallManager {
         cmd("reportlist");
         delay(() -> {
             state = State.SEARCHING;
-            search(); // Запускаем поиск заново
+            search();
         }, 1500);
     }
 
     private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
     private void cmd(String c) { if (client.getNetworkHandler() != null) client.getNetworkHandler().sendCommand(c); }
-    
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
