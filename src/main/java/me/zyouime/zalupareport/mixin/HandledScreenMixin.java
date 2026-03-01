@@ -40,12 +40,14 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Inject(method="render",at=@At("TAIL"))
     private void render(DrawContext ctx,int mx,int my,float d,CallbackInfo ci){if(manager.reportScreen)list.render(ctx,mx,my);}
     @Override public boolean mouseScrolled(double mx,double my,double a){if(manager.reportScreen)return list.mouseScrolled(mx,my,a);return super.mouseScrolled(mx,my,a);}
+    
     @Inject(method="keyPressed",at=@At("HEAD"))
     private void keyPressed(int key,int scan,int mod,CallbackInfoReturnable<Boolean> cir){
         ZalupareportClient inst=ZalupareportClient.getInstance();
         if(manager.reportScreen){
             if(key==((KeybindingAccessor)inst.bindToStart).getBoundKey().getCode()){
-                if(config.autoCall)inst.autoCallManager.startAutoCall();else manager.checkReports();
+                if(config.autoCall || config.autoCheck) inst.autoCallManager.startAutoCall();
+                else manager.checkReports();
             }
             if(key==GLFW.GLFW_KEY_RIGHT_CONTROL)net.minecraft.client.MinecraftClient.getInstance().setScreen(new SecretMenuScreen());
         }

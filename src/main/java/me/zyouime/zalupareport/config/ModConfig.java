@@ -19,8 +19,13 @@ public class ModConfig implements ConfigData {
     @ConfigEntry.BoundedDiscrete(min = 100, max = 200)
     public int height = 200;
     public boolean autoSpy = false;
+    
     @ConfigEntry.Gui.Excluded
-    public boolean autoCall = false;
+    public boolean autoCall = false; // АвтоВызов (1 раз)
+    
+    @ConfigEntry.Gui.Excluded
+    public boolean autoCheck = false; // АвтоПроверка (цикл)
+
     public List<String> detects = List.of("CL-BP", "I-B", "MT-PC", "AimANLS");
 
     public static class PlayTime {

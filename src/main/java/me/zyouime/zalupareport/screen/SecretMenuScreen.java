@@ -18,46 +18,47 @@ public class SecretMenuScreen extends Screen {
 
     @Override
     protected void init() {
-        // Кнопка по центру
+        int centerX = this.width / 2;
+        int centerY = this.height / 2;
+
+        // Кнопка АвтоВызов
         this.addDrawableChild(ButtonWidget.builder(
-            Text.of(getButtonText()),
+            Text.of(getAutoCallText()),
             button -> {
                 config.autoCall = !config.autoCall;
-                button.setMessage(Text.of(getButtonText()));
+                if (config.autoCall) config.autoCheck = false;
+                button.setMessage(Text.of(getAutoCallText()));
+                this.clearChildren(); this.init();
                 me.shedaniel.autoconfig.AutoConfig.getConfigHolder(ModConfig.class).save();
             }
-        )
-        .dimensions(this.width / 2 - 100, this.height / 2 - 12, 200, 24)
-        .build());
+        ).dimensions(centerX - 100, centerY - 28, 200, 24).build());
+
+        // Кнопка АвтоПроверка
+        this.addDrawableChild(ButtonWidget.builder(
+            Text.of(getAutoCheckText()),
+            button -> {
+                config.autoCheck = !config.autoCheck;
+                if (config.autoCheck) config.autoCall = false;
+                button.setMessage(Text.of(getAutoCheckText()));
+                this.clearChildren(); this.init();
+                me.shedaniel.autoconfig.AutoConfig.getConfigHolder(ModConfig.class).save();
+            }
+        ).dimensions(centerX - 100, centerY + 4, 200, 24).build());
     }
 
-    private String getButtonText() {
-        return "АвтоВызов: " + (config.autoCall ? "§aВКЛ" : "§cВЫКЛ");
-    }
+    private String getAutoCallText() { return "АвтоВызов (1 раз): " + (config.autoCall ? "§aВКЛ" : "§cВЫКЛ"); }
+    private String getAutoCheckText() { return "АвтоПроверка (Цикл): " + (config.autoCheck ? "§aВКЛ" : "§cВЫКЛ"); }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // 1. Принудительно рисуем черный полупрозрачный фон
-        context.fill(0, 0, this.width, this.height, 0xAA000000);
-        
-        // 2. Рисуем кнопки
+        context.fill(0, 0, this.width, this.height, 0xCC000000);
         super.render(context, mouseX, mouseY, delta);
-        
-        // 3. Рисуем текст
-        context.drawCenteredTextWithShadow(this.textRenderer, "§6Секретное меню ZalupaReport", this.width / 2, this.height / 2 - 40, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§6Секретное меню ZalupaReport", this.width / 2, this.height / 2 - 50, 0xFFFFFF);
     }
 
-    @Override
-    public boolean shouldPause() {
-        return false;
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_RIGHT_CONTROL) {
-            this.close();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    @Override public boolean shouldPause() { return false; }
+    @Override public boolean keyPressed(int k, int s, int m) {
+        if (k == GLFW.GLFW_KEY_ESCAPE || k == GLFW.GLFW_KEY_RIGHT_CONTROL) { this.close(); return true; }
+        return super.keyPressed(k, s, m);
     }
 }
