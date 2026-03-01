@@ -6,11 +6,12 @@
   "mixins": [],
   "client": [
     "ChatMessageMixin",
-    "ClientPlayNetworkHandlerMixin",
+    "ClientPlayerEntityMixin",
     "HandledScreenMixin",
     "INativeImageMixin",
     "KeybindingAccessor",
-    "MinecraftClientMixin"
+    "MinecraftClientMixin",
+    "SecretKeyMixin"
   ],
   "injectors": { "defaultRequire": 1 },
   "overwrites": { "requireAnnotations": true }
