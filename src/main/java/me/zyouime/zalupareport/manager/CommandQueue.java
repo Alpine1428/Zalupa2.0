@@ -8,9 +8,8 @@ public class CommandQueue {
     private static final Queue<String> queue = new LinkedList<>();
     private static int tickCounter = 0;
     
-    // Задержка между командами в тиках (20 тиков = 1 секунда)
-    // Ставим 5 тиков (0.25 сек) чтобы сервер успевал
-    private static final int DELAY = 5;
+    // Задержка между командами (в тиках)
+    private static final int DELAY = 10;
 
     public static void add(String cmd) {
         queue.add(cmd);
@@ -32,10 +31,17 @@ public class CommandQueue {
             tickCounter = 0;
             String cmd = queue.poll();
             
-            // В Fabric 1.20.1 метод называется sendCommand
-            // Он принимает строку БЕЗ слэша
             if (mc.getNetworkHandler() != null) {
-                mc.getNetworkHandler().sendCommand(cmd);
+                // Если команда начинается с "hm" (HolyModeration) — это клиентская команда.
+                // Её нужно отправлять как СООБЩЕНИЕ ЧАТА (со слэшем).
+                if (cmd.startsWith("hm ")) {
+                    mc.getNetworkHandler().sendChatMessage("/" + cmd);
+                } 
+                // Остальные команды (find, ln, playtime) — серверные.
+                // Их отправляем как ПАКЕТ КОМАНДЫ (без слэша).
+                else {
+                    mc.getNetworkHandler().sendCommand(cmd);
+                }
             }
         }
     }
