@@ -112,7 +112,7 @@ public class AutoCallManager {
             client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, slot, 0, SlotActionType.PICKUP, client.player);
             client.keyboard.setClipboard(currentNick);
             
-            msg("§a[Auto] §fВзял репорт: §e" + currentNick);
+            msg("§a[Auto] Взял репорт: §e" + currentNick);
             
             // ПЕРЕХОД К SPY
             state = State.DOING_SPY;
@@ -164,7 +164,7 @@ public class AutoCallManager {
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
                 
-                msg("§a[Auto] Обнаружена команда модерации. Завершаю...");
+                msg("§a[Auto] Обнаружена команда бана. Завершаю...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -174,8 +174,9 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // 1. ОТПРАВЛЯЕМ /hm spy ЧЕРЕЗ ЧАТ (для совместимости)
-        sendChat("/hm spy " + currentNick);
+        // 1. ОТПРАВЛЯЕМ /hm spy (sendCommand добавляет / сам)
+        cmd("hm spy " + currentNick);
+        msg("§7[DEBUG] -> /hm spy " + currentNick);
         
         state = State.DOING_FIND;
         
@@ -186,12 +187,14 @@ public class AutoCallManager {
     private void doFind() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
-        sendChat("/find " + currentNick);
+        
+        cmd("find " + currentNick);
+        msg("§7[DEBUG] -> /find " + currentNick);
         
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
-                msg("§c[Auto] Сервер игрока не найден");
+                msg("§c[Auto] Сервер не найден");
                 state = State.IDLE;
             }
         }, 10000);
@@ -203,12 +206,13 @@ public class AutoCallManager {
         Matcher m2 = l2anarchyP.matcher(srv);
         Matcher m3 = anarchyP.matcher(srv);
 
-        if (m1.find()) c = "/ln " + m1.group(1);
-        else if (m2.find()) c = "/ln120 " + m2.group(1);
-        else if (m3.find()) c = "/cn " + m3.group(1);
+        if (m1.find()) c = "ln " + m1.group(1);
+        else if (m2.find()) c = "ln120 " + m2.group(1);
+        else if (m3.find()) c = "cn " + m3.group(1);
 
         if (c != null) {
-            sendChat(c); // Переход на сервер
+            cmd(c);
+            msg("§7[DEBUG] -> /" + c);
             
             if (config.autoCall) {
                 msg("§a[Auto] Переход выполнен. АвтоВызов завершен.");
@@ -218,7 +222,7 @@ public class AutoCallManager {
 
             if (config.autoCheck) {
                 state = State.CONNECTING_SERVER;
-                delay(this::startPt, 10000); // 10 сек пауза
+                delay(this::startPt, 10000);
             }
         } else {
             msg("§c[Auto] Неизвестный сервер: " + srv);
@@ -235,14 +239,16 @@ public class AutoCallManager {
     private void sendPt() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitPt = true;
-        sendChat("/playtime " + currentNick);
+        cmd("playtime " + currentNick);
+        msg("§7[DEBUG] -> /playtime " + currentNick);
     }
 
     private void handlePt(int sec) {
         if (sec < 7) {
-            sendChat("/hm spyfrz");
+            cmd("hm spyfrz");
+            msg("§7[DEBUG] -> /hm spyfrz");
             state = State.WAITING_SPYFRZ;
-            msg("§e[Auto] Игрок активен. Заморозил. Жду бана...");
+            msg("§e[Auto] Активен. Заморозил. Жду бана...");
         } else {
             if (state == State.DOING_PLAYTIME) {
                 state = State.CHECKING_PLAYTIME_LOOP;
@@ -262,7 +268,7 @@ public class AutoCallManager {
     }
 
     private void close1() {
-        sendChat("/reportlist");
+        cmd("reportlist");
         state = State.CLOSING_STEP2;
         delay(this::close2, 1500);
     }
@@ -279,7 +285,6 @@ public class AutoCallManager {
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
         
         delay(() -> {
-            // Пишем "-" как текст, через ChatScreen эмуляцию (на всякий случай)
             chat("-");
             state = State.REOPENING;
             delay(this::reopen, 1500);
@@ -289,39 +294,27 @@ public class AutoCallManager {
     private void reopen() {
         if (!config.autoCheck) { state = State.IDLE; return; }
         foundAny = false;
-        sendChat("/reportlist");
+        cmd("reportlist");
         delay(() -> {
             state = State.SEARCHING;
             search();
         }, 1500);
     }
 
-    private void msg(String m) { 
-        if (client.player != null) client.player.sendMessage(Text.of(m)); 
+    private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
+    
+    // ОТПРАВКА КОМАНДЫ (sendCommand добавляет / сам)
+    private void cmd(String c) { 
+        if (client.getNetworkHandler() != null) 
+            client.getNetworkHandler().sendCommand(c); 
     }
     
-    // ОСНОВНОЙ МЕТОД ОТПРАВКИ КОМАНД
-    private void sendChat(String text) {
-        if (client.player == null) return;
-        
-        // Показываем в чате, что именно мы отправляем
-        msg("§7[DEBUG] Выполняю: " + text);
-        
-        // Отправка
-        if (client.getNetworkHandler() != null) {
-            client.getNetworkHandler().sendChatMessage(text);
-        }
-    }
-    
-    // Эмуляция открытия чата (для текста "-")
+    // ОТПРАВКА ЧАТА (для "-" и текста)
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
-            client.setScreen(null);
-            ChatScreen s = new ChatScreen("");
-            client.setScreen(s);
-            s.sendMessage(m, true);
-            client.setScreen(null);
+            if (client.getNetworkHandler() != null)
+                client.getNetworkHandler().sendChatMessage(m);
         });
     }
 
