@@ -16,8 +16,7 @@ import java.util.regex.Pattern;
 public class AutoCallManager {
 
     public enum State {
-        IDLE, SEARCHING, DOING_SPY, DOING_FIND, 
-        CONNECTING_SERVER, 
+        IDLE, SEARCHING, DOING_SPY, DOING_FIND, CONNECTING_SERVER, 
         DOING_PLAYTIME, CHECKING_PLAYTIME_LOOP, WAITING_SPYFRZ,
         CLOSING_STEP1, CLOSING_STEP2, CLOSING_STEP3, REOPENING
     }
@@ -27,7 +26,6 @@ public class AutoCallManager {
 
     private final Pattern nickPattern = Pattern.compile("игрока\\s+(\\w+)");
     private final Pattern timePattern = Pattern.compile("(?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\s\\((?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\)");
-    
     private final Pattern findPattern = Pattern.compile("Игрок\\s+\\S+\\s+находится на сервере\\s+(\\S+)");
     private final Pattern activityPattern = Pattern.compile("Последняя активность:\\s*(?:(\\d+)\\s*ч\\.,\\s*)?(?:(\\d+)\\s*м\\.,\\s*)?(\\d+)\\s*сек\\.");
     
@@ -66,9 +64,7 @@ public class AutoCallManager {
 
     private void search() {
         if (client.player == null || client.player.currentScreenHandler == null) {
-            msg("Ошибка: нет меню");
-            state = State.IDLE;
-            return;
+            msg("Ошибка: нет меню"); state = State.IDLE; return;
         }
 
         List<ItemStack> items = client.player.currentScreenHandler.getStacks();
@@ -100,11 +96,9 @@ public class AutoCallManager {
             ModConfig.PlayTime pt = config.playTime;
             boolean all = allM < pt.allTime, last = actM < pt.activeTime;
             
-            boolean activeCheck = pt.checkActiveTime && !pt.checkAllTime;
-            boolean allCheck = !pt.checkActiveTime && pt.checkAllTime;
-            boolean bothCheck = pt.checkActiveTime && pt.checkAllTime;
-
-            if ((activeCheck && !last) || (allCheck && !all) || (bothCheck && (!all || !last))) continue;
+            if ((pt.checkActiveTime && !pt.checkAllTime && !last) || 
+                (!pt.checkActiveTime && pt.checkAllTime && !all) || 
+                (pt.checkActiveTime && pt.checkAllTime && (!all || !last))) continue;
 
             slot = i;
             nick = n;
@@ -118,8 +112,9 @@ public class AutoCallManager {
             client.keyboard.setClipboard(nick);
             msg("Взял репорт на " + nick);
             
+            // Сразу переходим к SPY
             state = State.DOING_SPY;
-            delay(this::doSpy, 1000);
+            delay(this::doSpy, 600); // Небольшая задержка перед spy
         } else {
             boolean next = items.size() > 45 && items.get(45) != null && !items.get(45).isEmpty();
             if (next) {
@@ -140,6 +135,7 @@ public class AutoCallManager {
     public void onChatMessage(String message) {
         if (state == State.IDLE) return;
 
+        // Поиск сервера (/find)
         if (state == State.DOING_FIND && waitFind) {
             Matcher m = findPattern.matcher(message);
             if (m.find()) {
@@ -148,6 +144,7 @@ public class AutoCallManager {
             }
         }
 
+        // Плейтайм (/playtime) - только для AutoCheck
         if (config.autoCheck && (state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP) && waitPt) {
             if (message.contains("Последняя активность")) {
                 Matcher m = activityPattern.matcher(message);
@@ -156,19 +153,19 @@ public class AutoCallManager {
                     int h = m.group(1) != null ? Integer.parseInt(m.group(1)) : 0;
                     int min = m.group(2) != null ? Integer.parseInt(m.group(2)) : 0;
                     int sec = Integer.parseInt(m.group(3));
-                    int totalSec = h * 3600 + min * 60 + sec;
-                    handlePt(totalSec);
+                    handlePt(h * 3600 + min * 60 + sec);
                 }
             }
         }
 
+        // Ожидание бана - только для AutoCheck
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             String lower = message.toLowerCase();
             if (lower.contains("/hm sban") || lower.contains("/banip") || 
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
                 
-                msg("Обнаружена команда бана/разбана. Завершаю репорт...");
+                msg("Команда обнаружена. Закрываю репорт...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -177,7 +174,9 @@ public class AutoCallManager {
 
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
+        // Отправляем /hm spy
         cmd("hm spy " + currentNick);
+        
         state = State.DOING_FIND;
         delay(this::doFind, 500);
     }
@@ -189,7 +188,7 @@ public class AutoCallManager {
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
-                msg("Не нашел сервер для " + currentNick);
+                msg("Сервер не найден");
                 state = State.IDLE;
             }
         }, 10000);
@@ -208,15 +207,17 @@ public class AutoCallManager {
         if (c != null) {
             cmd(c);
             
+            // Если режим "АвтоВызов" (1 раз) -> Стоп
             if (config.autoCall) {
-                msg("Перешел на сервер. АвтоВызов завершен.");
+                msg("Перешел к игроку. АвтоВызов завершен.");
                 state = State.IDLE;
                 return;
             }
 
+            // Если режим "АвтоПроверка" -> Ждем 10 сек и проверяем плейтайм
             if (config.autoCheck) {
                 state = State.CONNECTING_SERVER;
-                delay(this::startPt, 10000);
+                delay(this::startPt, 10000); // 10 секунд пауза
             }
         } else {
             msg("Неизвестный сервер: " + srv);
@@ -238,21 +239,25 @@ public class AutoCallManager {
 
     private void handlePt(int sec) {
         if (sec < 7) {
+            // Активен -> заморозить
             cmd("hm spyfrz");
             state = State.WAITING_SPYFRZ;
-            msg("Игрок активен! Заморозил. Жду бана/разбана...");
+            msg("Активен! Заморозил. Жду бана...");
         } else {
+            // АФК -> цикл проверки
             if (state == State.DOING_PLAYTIME) {
                 state = State.CHECKING_PLAYTIME_LOOP;
                 ptStart = System.currentTimeMillis();
             }
             
             if (System.currentTimeMillis() - ptStart < 30000) {
+                // Повтор через 3 сек
                 delay(() -> {
                     if (state == State.CHECKING_PLAYTIME_LOOP) sendPt();
                 }, 3000);
             } else {
-                msg("Игрок афк. Закрываю репорт...");
+                // Тайм-аут (АФК 30 сек)
+                msg("Игрок афк. Закрываю...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -266,22 +271,20 @@ public class AutoCallManager {
     }
 
     private void close2() {
-        if (client.player == null || client.player.currentScreenHandler == null) {
-            state = State.IDLE; return;
-        }
+        if (client.player == null || client.player.currentScreenHandler == null) { state = State.IDLE; return; }
+        // Клик по слоту 47 (большой сундук)
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 47, 0, SlotActionType.PICKUP, client.player);
         state = State.CLOSING_STEP3;
         delay(this::close3, 1500);
     }
 
     private void close3() {
-        if (client.player == null || client.player.currentScreenHandler == null) {
-            state = State.IDLE; return;
-        }
+        if (client.player == null || client.player.currentScreenHandler == null) { state = State.IDLE; return; }
+        // Клик по слоту 16 (маленький сундук)
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
         
         delay(() -> {
-            chat("-");
+            chat("-"); // Пишем минус в чат
             state = State.REOPENING;
             delay(this::reopen, 1500);
         }, 500);
@@ -293,12 +296,13 @@ public class AutoCallManager {
         cmd("reportlist");
         delay(() -> {
             state = State.SEARCHING;
-            search();
+            search(); // Запускаем поиск заново
         }, 1500);
     }
 
     private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
     private void cmd(String c) { if (client.getNetworkHandler() != null) client.getNetworkHandler().sendCommand(c); }
+    
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
