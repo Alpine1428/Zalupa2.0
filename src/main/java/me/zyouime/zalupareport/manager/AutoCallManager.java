@@ -162,7 +162,7 @@ public class AutoCallManager {
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
                 
-                msg("Команда получена. Закрываю репорт...");
+                msg("Команда обнаружена. Закрываю репорт...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -172,9 +172,10 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // ОТПРАВЛЯЕМ КОМАНДУ ЧЕРЕЗ sendCommand (без слэша)
-        // Это гарантия того, что клиент отправит пакет команды, а не чат
-        cmd("hm spy " + currentNick);
+        // !!! ФИКС: Используем sendChatMessage для команд других модов
+        if (client.player != null) {
+            client.player.networkHandler.sendChatMessage("/hm spy " + currentNick);
+        }
         
         state = State.DOING_FIND;
         delay(this::doFind, 3000);
@@ -183,7 +184,10 @@ public class AutoCallManager {
     private void doFind() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
+        
+        // Для серверных команд надежнее sendCommand
         cmd("find " + currentNick);
+        
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
@@ -236,7 +240,10 @@ public class AutoCallManager {
 
     private void handlePt(int sec) {
         if (sec < 7) {
-            cmd("hm spyfrz");
+            // Команда другого мода - через чат
+            if (client.player != null) {
+                client.player.networkHandler.sendChatMessage("/hm spyfrz");
+            }
             state = State.WAITING_SPYFRZ;
             msg("Активен! Заморозил. Жду бана...");
         } else {
@@ -275,7 +282,7 @@ public class AutoCallManager {
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
         
         delay(() -> {
-            chat("-"); // Минус в чат (это текст, не команда)
+            chat("-");
             state = State.REOPENING;
             delay(this::reopen, 1500);
         }, 500);
@@ -293,17 +300,16 @@ public class AutoCallManager {
 
     private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
     
-    // ОТПРАВКА КОМАНДЫ (без слэша, API сам добавит)
+    // ОТПРАВКА КОМАНДЫ (без слэша)
     private void cmd(String c) { 
         if (client.getNetworkHandler() != null) 
             client.getNetworkHandler().sendCommand(c); 
     }
     
-    // ОТПРАВКА ЧАТА (для "-" и сообщений)
+    // ОТПРАВКА ЧАТА (со слэшем или без)
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
-            // Надежный способ отправить чат сообщение
             if (client.getNetworkHandler() != null)
                 client.getNetworkHandler().sendChatMessage(m);
         });
