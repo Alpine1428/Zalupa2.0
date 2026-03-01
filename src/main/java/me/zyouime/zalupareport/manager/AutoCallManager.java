@@ -173,15 +173,12 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // ВИЗУАЛЬНОЕ ПОДТВЕРЖДЕНИЕ
-        msg("§7[Debug] Отправляю: §6/hm spy " + currentNick);
-        
-        // ОТПРАВКА КОМАНДЫ (добавляет / автоматически)
+        // ОТПРАВЛЯЕТ: /hm spy NIK
         cmd("hm spy " + currentNick);
         
         state = State.DOING_FIND;
         
-        // 3 СЕКУНДЫ ЗАДЕРЖКА ПЕРЕД FIND
+        // ПАУЗА 3 СЕКУНДЫ перед /find
         delay(this::doFind, 3000);
     }
 
@@ -278,6 +275,7 @@ public class AutoCallManager {
     private void close3() {
         if (client.player == null || client.player.currentScreenHandler == null) { state = State.IDLE; return; }
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
+        
         delay(() -> {
             chat("-");
             state = State.REOPENING;
