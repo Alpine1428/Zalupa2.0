@@ -26,6 +26,7 @@ public class AutoCallManager {
 
     private final Pattern nickPattern = Pattern.compile("игрока\\s+(\\w+)");
     private final Pattern timePattern = Pattern.compile("(?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\s\\((?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\)");
+    
     private final Pattern findPattern = Pattern.compile("Игрок\\s+\\S+\\s+находится на сервере\\s+(\\S+)");
     private final Pattern activityPattern = Pattern.compile("Последняя активность:\\s*(?:(\\d+)\\s*ч\\.,\\s*)?(?:(\\d+)\\s*м\\.,\\s*)?(\\d+)\\s*сек\\.");
     
@@ -114,7 +115,11 @@ public class AutoCallManager {
             msg("§a[Auto] Взял репорт: §e" + currentNick);
             
             state = State.DOING_SPY;
-            delay(this::doSpy, 1000);
+            // Используем CommandQueue для /hm spy
+            CommandQueue.add("hm spy " + currentNick);
+            msg("§7[DEBUG] -> /hm spy " + currentNick);
+            
+            delay(this::doFind, 3000); // Через 3 сек ищем сервер
         } else {
             boolean next = items.size() > 45 && items.get(45) != null && !items.get(45).isEmpty();
             if (next) {
@@ -135,6 +140,7 @@ public class AutoCallManager {
     public void onChatMessage(String message) {
         if (state == State.IDLE) return;
 
+        // Поиск сервера
         if (state == State.DOING_FIND && waitFind) {
             Matcher m = findPattern.matcher(message);
             if (m.find()) {
@@ -143,6 +149,7 @@ public class AutoCallManager {
             }
         }
 
+        // Плейтайм
         if (config.autoCheck && (state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP) && waitPt) {
             if (message.contains("Последняя активность")) {
                 Matcher m = activityPattern.matcher(message);
@@ -156,8 +163,10 @@ public class AutoCallManager {
             }
         }
 
+        // Ожидание бана
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             String lower = message.toLowerCase();
+            // Проверка на наличие команд бана/разбана в сообщении
             if (lower.contains("/hm sban") || lower.contains("/banip") || 
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
@@ -169,15 +178,10 @@ public class AutoCallManager {
         }
     }
 
+    // Методы вызываются по цепочке
+    
     private void doSpy() {
-        if (currentNick == null) { state = State.IDLE; return; }
-        
-        // Используем CommandQueue для надежной отправки
-        CommandQueue.add("hm spy " + currentNick);
-        msg("§7[DEBUG] -> /hm spy " + currentNick);
-        
         state = State.DOING_FIND;
-        delay(this::doFind, 3000);
     }
 
     private void doFind() {
@@ -240,8 +244,10 @@ public class AutoCallManager {
 
     private void handlePt(int sec) {
         if (sec < 7) {
+            // ОТПРАВЛЯЕМ SPYFRZ через CommandQueue (это гарантированно отправит в чат)
             CommandQueue.add("hm spyfrz");
             msg("§7[DEBUG] -> /hm spyfrz");
+            
             state = State.WAITING_SPYFRZ;
             msg("§e[Auto] Активен. Заморозил. Жду бана...");
         } else {
