@@ -173,12 +173,15 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // ВОТ ЗДЕСЬ ОТПРАВЛЯЕТСЯ КОМАНДА: /hm spy NIK
+        // ВИЗУАЛЬНОЕ ПОДТВЕРЖДЕНИЕ
+        msg("§7[Debug] Отправляю: §6/hm spy " + currentNick);
+        
+        // ОТПРАВКА КОМАНДЫ (добавляет / автоматически)
         cmd("hm spy " + currentNick);
         
         state = State.DOING_FIND;
         
-        // ПАУЗА 3 СЕКУНДЫ перед поиском сервера
+        // 3 СЕКУНДЫ ЗАДЕРЖКА ПЕРЕД FIND
         delay(this::doFind, 3000);
     }
 
@@ -208,14 +211,12 @@ public class AutoCallManager {
         if (c != null) {
             cmd(c);
             
-            // Если АвтоВызов (1 раз) -> СТОП
             if (config.autoCall) {
                 msg("Перешел к игроку. АвтоВызов завершен.");
                 state = State.IDLE;
                 return;
             }
 
-            // Если АвтоПроверка -> Ждем 10 сек
             if (config.autoCheck) {
                 state = State.CONNECTING_SERVER;
                 delay(this::startPt, 10000);
@@ -296,7 +297,7 @@ public class AutoCallManager {
 
     private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
     
-    // ОТПРАВКА КОМАНДЫ (добавляет / автоматически)
+    // ОТПРАВЛЯЕТ КОМАНДУ (автоматически добавляет /)
     private void cmd(String c) { 
         if (client.getNetworkHandler() != null) 
             client.getNetworkHandler().sendCommand(c); 
