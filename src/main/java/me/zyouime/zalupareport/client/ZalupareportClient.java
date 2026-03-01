@@ -5,6 +5,7 @@ import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import me.zyouime.zalupareport.config.ModConfig;
 import me.zyouime.zalupareport.manager.ZalupaManager;
 import me.zyouime.zalupareport.manager.AutoCallManager;
+import me.zyouime.zalupareport.manager.CommandQueue;
 import me.zyouime.zalupareport.render.shader.ArcShader;
 import me.zyouime.zalupareport.render.shader.MyShaders;
 import me.zyouime.zalupareport.render.shader.RectangleShader;
@@ -27,7 +28,6 @@ public class ZalupareportClient implements ClientModInitializer {
     public ZalupaManager manager;
     public AutoCallManager autoCallManager;
     
-    // Регистрируем кнопку официально
     public KeyBinding bindToStart = KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "\u041f\u043e\u0438\u0441\u043a \u0447\u0438\u0442\u0435\u0440\u043e\u0432 \u043d\u0430\u0445",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
@@ -57,12 +57,15 @@ public class ZalupareportClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             manager.resetAll();
             autoCallManager.reset();
+            CommandQueue.clear(); // Очищаем очередь при дисконнекте
         });
 
-        // САМЫЙ НАДЕЖНЫЙ СПОСОБ ОТКРЫТЬ МЕНЮ
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // Обработка очереди команд
+            CommandQueue.tick();
+            
             while (secretMenuBind.wasPressed()) {
-                if (client.player != null) { // Открываем только если игрок в мире
+                if (client.player != null) {
                     client.setScreen(new SecretMenuScreen());
                 }
             }

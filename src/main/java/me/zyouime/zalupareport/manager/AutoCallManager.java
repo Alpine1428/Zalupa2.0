@@ -26,7 +26,6 @@ public class AutoCallManager {
 
     private final Pattern nickPattern = Pattern.compile("игрока\\s+(\\w+)");
     private final Pattern timePattern = Pattern.compile("(?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\s\\((?:(\\d+)\\sч\\.,\\s)?(?:(\\d+)\\sм\\.,\\s)?\\d+\\sсек\\.\\)");
-    
     private final Pattern findPattern = Pattern.compile("Игрок\\s+\\S+\\s+находится на сервере\\s+(\\S+)");
     private final Pattern activityPattern = Pattern.compile("Последняя активность:\\s*(?:(\\d+)\\s*ч\\.,\\s*)?(?:(\\d+)\\s*м\\.,\\s*)?(\\d+)\\s*сек\\.");
     
@@ -50,6 +49,7 @@ public class AutoCallManager {
         waitFind = false;
         waitPt = false;
         foundAny = false;
+        CommandQueue.clear();
     }
 
     public boolean isActive() {
@@ -111,10 +111,8 @@ public class AutoCallManager {
             currentNick = nick.trim();
             client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, slot, 0, SlotActionType.PICKUP, client.player);
             client.keyboard.setClipboard(currentNick);
-            
             msg("§a[Auto] Взял репорт: §e" + currentNick);
             
-            // ПЕРЕХОД К SPY
             state = State.DOING_SPY;
             delay(this::doSpy, 1000);
         } else {
@@ -174,21 +172,18 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // 1. ОТПРАВЛЯЕМ /hm spy (sendCommand добавляет / сам)
-        cmd("hm spy " + currentNick);
+        // Используем CommandQueue для надежной отправки
+        CommandQueue.add("hm spy " + currentNick);
         msg("§7[DEBUG] -> /hm spy " + currentNick);
         
         state = State.DOING_FIND;
-        
-        // 2. ЖДЕМ 3 СЕКУНДЫ
         delay(this::doFind, 3000);
     }
 
     private void doFind() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
-        
-        cmd("find " + currentNick);
+        CommandQueue.add("find " + currentNick);
         msg("§7[DEBUG] -> /find " + currentNick);
         
         delay(() -> {
@@ -211,7 +206,7 @@ public class AutoCallManager {
         else if (m3.find()) c = "cn " + m3.group(1);
 
         if (c != null) {
-            cmd(c);
+            CommandQueue.add(c);
             msg("§7[DEBUG] -> /" + c);
             
             if (config.autoCall) {
@@ -239,13 +234,13 @@ public class AutoCallManager {
     private void sendPt() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitPt = true;
-        cmd("playtime " + currentNick);
+        CommandQueue.add("playtime " + currentNick);
         msg("§7[DEBUG] -> /playtime " + currentNick);
     }
 
     private void handlePt(int sec) {
         if (sec < 7) {
-            cmd("hm spyfrz");
+            CommandQueue.add("hm spyfrz");
             msg("§7[DEBUG] -> /hm spyfrz");
             state = State.WAITING_SPYFRZ;
             msg("§e[Auto] Активен. Заморозил. Жду бана...");
@@ -268,7 +263,7 @@ public class AutoCallManager {
     }
 
     private void close1() {
-        cmd("reportlist");
+        CommandQueue.add("reportlist");
         state = State.CLOSING_STEP2;
         delay(this::close2, 1500);
     }
@@ -294,7 +289,7 @@ public class AutoCallManager {
     private void reopen() {
         if (!config.autoCheck) { state = State.IDLE; return; }
         foundAny = false;
-        cmd("reportlist");
+        CommandQueue.add("reportlist");
         delay(() -> {
             state = State.SEARCHING;
             search();
@@ -303,13 +298,6 @@ public class AutoCallManager {
 
     private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
     
-    // ОТПРАВКА КОМАНДЫ (sendCommand добавляет / сам)
-    private void cmd(String c) { 
-        if (client.getNetworkHandler() != null) 
-            client.getNetworkHandler().sendCommand(c); 
-    }
-    
-    // ОТПРАВКА ЧАТА (для "-" и текста)
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
