@@ -111,10 +111,12 @@ public class AutoCallManager {
             currentNick = nick.trim();
             client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, slot, 0, SlotActionType.PICKUP, client.player);
             client.keyboard.setClipboard(currentNick);
-            msg("Взял репорт: " + currentNick);
             
+            msg("§a[Auto] §fВзял репорт: §e" + currentNick);
+            
+            // ПЕРЕХОД К SPY
             state = State.DOING_SPY;
-            delay(this::doSpy, 600);
+            delay(this::doSpy, 1000);
         } else {
             boolean next = items.size() > 45 && items.get(45) != null && !items.get(45).isEmpty();
             if (next) {
@@ -123,7 +125,7 @@ public class AutoCallManager {
             } else {
                 if (!foundAny) {
                     if (client.player != null) client.player.closeHandledScreen();
-                    msg("Репорты не найдены");
+                    msg("§c[Auto] Репорты не найдены");
                 }
                 state = State.IDLE;
             }
@@ -162,7 +164,7 @@ public class AutoCallManager {
                 lower.contains("/hm unfrz") || lower.contains("/hm unfreezing") ||
                 lower.contains("hm sban") || lower.contains("banip")) {
                 
-                msg("Команда обнаружена. Закрываю репорт...");
+                msg("§a[Auto] Обнаружена команда модерации. Завершаю...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -172,26 +174,24 @@ public class AutoCallManager {
     private void doSpy() {
         if (currentNick == null) { state = State.IDLE; return; }
         
-        // !!! ФИКС: Используем sendChatMessage для команд других модов
-        if (client.player != null) {
-            client.player.networkHandler.sendChatMessage("/hm spy " + currentNick);
-        }
+        // 1. ОТПРАВЛЯЕМ /hm spy ЧЕРЕЗ ЧАТ (для совместимости)
+        sendChat("/hm spy " + currentNick);
         
         state = State.DOING_FIND;
+        
+        // 2. ЖДЕМ 3 СЕКУНДЫ
         delay(this::doFind, 3000);
     }
 
     private void doFind() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
-        
-        // Для серверных команд надежнее sendCommand
-        cmd("find " + currentNick);
+        sendChat("/find " + currentNick);
         
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
-                msg("Сервер не найден");
+                msg("§c[Auto] Сервер игрока не найден");
                 state = State.IDLE;
             }
         }, 10000);
@@ -203,25 +203,25 @@ public class AutoCallManager {
         Matcher m2 = l2anarchyP.matcher(srv);
         Matcher m3 = anarchyP.matcher(srv);
 
-        if (m1.find()) c = "ln " + m1.group(1);
-        else if (m2.find()) c = "ln120 " + m2.group(1);
-        else if (m3.find()) c = "cn " + m3.group(1);
+        if (m1.find()) c = "/ln " + m1.group(1);
+        else if (m2.find()) c = "/ln120 " + m2.group(1);
+        else if (m3.find()) c = "/cn " + m3.group(1);
 
         if (c != null) {
-            cmd(c); // Переход на сервер
+            sendChat(c); // Переход на сервер
             
             if (config.autoCall) {
-                msg("Перешел к игроку. АвтоВызов завершен.");
+                msg("§a[Auto] Переход выполнен. АвтоВызов завершен.");
                 state = State.IDLE;
                 return;
             }
 
             if (config.autoCheck) {
                 state = State.CONNECTING_SERVER;
-                delay(this::startPt, 10000);
+                delay(this::startPt, 10000); // 10 сек пауза
             }
         } else {
-            msg("Неизвестный сервер: " + srv);
+            msg("§c[Auto] Неизвестный сервер: " + srv);
             state = State.IDLE;
         }
     }
@@ -235,17 +235,14 @@ public class AutoCallManager {
     private void sendPt() {
         if (currentNick == null) { state = State.IDLE; return; }
         waitPt = true;
-        cmd("playtime " + currentNick);
+        sendChat("/playtime " + currentNick);
     }
 
     private void handlePt(int sec) {
         if (sec < 7) {
-            // Команда другого мода - через чат
-            if (client.player != null) {
-                client.player.networkHandler.sendChatMessage("/hm spyfrz");
-            }
+            sendChat("/hm spyfrz");
             state = State.WAITING_SPYFRZ;
-            msg("Активен! Заморозил. Жду бана...");
+            msg("§e[Auto] Игрок активен. Заморозил. Жду бана...");
         } else {
             if (state == State.DOING_PLAYTIME) {
                 state = State.CHECKING_PLAYTIME_LOOP;
@@ -257,7 +254,7 @@ public class AutoCallManager {
                     if (state == State.CHECKING_PLAYTIME_LOOP) sendPt();
                 }, 3000);
             } else {
-                msg("Игрок афк. Закрываю...");
+                msg("§e[Auto] Игрок АФК. Закрываю репорт...");
                 state = State.CLOSING_STEP1;
                 delay(this::close1, 1000);
             }
@@ -265,7 +262,7 @@ public class AutoCallManager {
     }
 
     private void close1() {
-        cmd("reportlist");
+        sendChat("/reportlist");
         state = State.CLOSING_STEP2;
         delay(this::close2, 1500);
     }
@@ -282,6 +279,7 @@ public class AutoCallManager {
         client.interactionManager.clickSlot(client.player.currentScreenHandler.syncId, 16, 0, SlotActionType.PICKUP, client.player);
         
         delay(() -> {
+            // Пишем "-" как текст, через ChatScreen эмуляцию (на всякий случай)
             chat("-");
             state = State.REOPENING;
             delay(this::reopen, 1500);
@@ -291,27 +289,39 @@ public class AutoCallManager {
     private void reopen() {
         if (!config.autoCheck) { state = State.IDLE; return; }
         foundAny = false;
-        cmd("reportlist");
+        sendChat("/reportlist");
         delay(() -> {
             state = State.SEARCHING;
             search();
         }, 1500);
     }
 
-    private void msg(String m) { if (client.player != null) client.player.sendMessage(Text.of(m)); }
-    
-    // ОТПРАВКА КОМАНДЫ (без слэша)
-    private void cmd(String c) { 
-        if (client.getNetworkHandler() != null) 
-            client.getNetworkHandler().sendCommand(c); 
+    private void msg(String m) { 
+        if (client.player != null) client.player.sendMessage(Text.of(m)); 
     }
     
-    // ОТПРАВКА ЧАТА (со слэшем или без)
+    // ОСНОВНОЙ МЕТОД ОТПРАВКИ КОМАНД
+    private void sendChat(String text) {
+        if (client.player == null) return;
+        
+        // Показываем в чате, что именно мы отправляем
+        msg("§7[DEBUG] Выполняю: " + text);
+        
+        // Отправка
+        if (client.getNetworkHandler() != null) {
+            client.getNetworkHandler().sendChatMessage(text);
+        }
+    }
+    
+    // Эмуляция открытия чата (для текста "-")
     private void chat(String m) {
         if (client.player == null) return;
         client.execute(() -> {
-            if (client.getNetworkHandler() != null)
-                client.getNetworkHandler().sendChatMessage(m);
+            client.setScreen(null);
+            ChatScreen s = new ChatScreen("");
+            client.setScreen(s);
+            s.sendMessage(m, true);
+            client.setScreen(null);
         });
     }
 
