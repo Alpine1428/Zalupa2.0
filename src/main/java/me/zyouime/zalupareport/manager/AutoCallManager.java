@@ -211,7 +211,7 @@ public class AutoCallManager {
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             Matcher bm = banPattern.matcher(message);
             if (bm.find()) {
-                msg("\u00a7a[Auto] \u041e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e \u0440\u0435\u043f\u043e\u0440\u0442...");
+                msg("\u00a7a[Auto] \u041e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
             }
