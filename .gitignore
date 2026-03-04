@@ -1,11 +1,34 @@
+# Gradle
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
+out/
+
+# IDE
 .idea/
 *.iml
+*.ipr
+*.iws
 .vscode/
-run/
-*.log
+.settings/
+.classpath
+.project
+*.launch
+.metadata
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Fabric
+run/
+logs/
+*.log
+
+# Java
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Other
+remappedSrc/

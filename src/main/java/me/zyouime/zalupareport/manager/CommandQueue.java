@@ -1,7 +1,6 @@
 package me.zyouime.zalupareport.manager;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ChatScreen;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -22,7 +21,7 @@ public class CommandQueue {
 
     public static void tick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null || mc.getNetworkHandler() == null) return;
 
         tickCounter++;
         if (tickCounter < DELAY) return;
@@ -31,14 +30,10 @@ public class CommandQueue {
             tickCounter = 0;
             String cmd = queue.poll();
 
-            // ✅ ГАРАНТИРОВАННЫЙ СПОСОБ
-            // Полная эмуляция ввода игрока
-
             mc.execute(() -> {
-                ChatScreen chat = new ChatScreen("/" + cmd);
-                mc.setScreen(chat);
-                chat.sendMessage("/" + cmd, true);
-                mc.setScreen(null);
+                if (mc.getNetworkHandler() != null && mc.player != null) {
+                    mc.getNetworkHandler().sendCommand(cmd);
+                }
             });
         }
     }
