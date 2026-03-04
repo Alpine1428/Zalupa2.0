@@ -45,7 +45,6 @@ public class AutoCallManager {
         "\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c:\\s*(?:(\\d+)\\s*\u0447\\.?,\\s*)?(?:(\\d+)\\s*\u043c\\.?,\\s*)?(\\d+)\\s*\u0441\u0435\u043a\\."
     );
 
-    // Порядок важен: l2anarchy проверяется раньше lanarchy
     private final Pattern l2anarchyP = Pattern.compile("^l2anarchy(\\d*)$");
     private final Pattern lanarchyP = Pattern.compile("^lanarchy(\\d*)$");
     private final Pattern anarchyP = Pattern.compile("^anarchy(\\d*)$");
@@ -81,10 +80,6 @@ public class AutoCallManager {
         return (config.autoCall || config.autoCheck) && state != State.IDLE;
     }
 
-    /**
-     * Zapusk avtomaticheskoj obrabotki.
-     * Vyzyvaetsya po knopke (Right Shift) v menyu reportov.
-     */
     public void startAutoCall() {
         if (!config.autoCall && !config.autoCheck) return;
         cancelled = false;
@@ -93,9 +88,6 @@ public class AutoCallManager {
         search();
     }
 
-    /**
-     * Poisk podhodyaschego reporta v tekuschem otkrytom menyu.
-     */
     private void search() {
         if (cancelled) { state = State.IDLE; return; }
 
@@ -124,14 +116,12 @@ public class AutoCallManager {
             if (!nm.find()) continue;
             String n = nm.group(1);
 
-            // Proverka detektov
             String det = config.detects.stream()
                 .filter(s -> !s.isEmpty() && nbtString.toLowerCase().contains(s.toLowerCase()))
                 .findFirst()
                 .orElse("zalupa");
             if (!config.detects.isEmpty() && det.equals("zalupa")) continue;
 
-            // Proverka plejtajma iz lora
             Matcher tm = timePattern.matcher(nbtString);
             if (!tm.find()) continue;
             int allM = getGroup(tm, 1) * 60 + getGroup(tm, 2);
@@ -153,7 +143,6 @@ public class AutoCallManager {
             foundAny = true;
             currentNick = nick.trim();
 
-            // Klik po reportu (beryom ego)
             client.interactionManager.clickSlot(
                 client.player.currentScreenHandler.syncId,
                 slot, 0, SlotActionType.PICKUP, client.player
@@ -165,7 +154,6 @@ public class AutoCallManager {
             state = State.DOING_SPY;
             delay(this::doSpy, 1000);
         } else {
-            // Probuem sleduyushchuyu stranicu
             boolean hasNext = items.size() > 53
                 && items.get(53) != null
                 && !items.get(53).isEmpty();
@@ -190,14 +178,9 @@ public class AutoCallManager {
         return m.group(g) == null ? 0 : Integer.parseInt(m.group(g));
     }
 
-    /**
-     * Obrabotka vhodyashchih soobshchenij chata.
-     * Vyzyvaetsya iz ChatMessageMixin.
-     */
     public void onChatMessage(String message) {
         if (state == State.IDLE || cancelled) return;
 
-        // === Otvet na /find ===
         if (state == State.DOING_FIND && waitFind) {
             Matcher m = findPattern.matcher(message);
             if (m.find()) {
@@ -208,7 +191,6 @@ public class AutoCallManager {
             }
         }
 
-        // === Otvet na /playtime (dlya autoCheck) ===
         if (config.autoCheck
             && (state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP)
             && waitPt) {
@@ -226,7 +208,6 @@ public class AutoCallManager {
             }
         }
 
-        // === Ozhidanie dejstvij moderacii posle /hm spyfrz (tolko autoCheck) ===
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             Matcher bm = banPattern.matcher(message);
             if (bm.find()) {
@@ -237,9 +218,6 @@ public class AutoCallManager {
         }
     }
 
-    /**
-     * Shag: /hm spy nik
-     */
     private void doSpy() {
         if (cancelled || currentNick == null) { state = State.IDLE; return; }
         CommandQueue.add("hm spy " + currentNick);
@@ -247,15 +225,11 @@ public class AutoCallManager {
         delay(this::doFind, 3000);
     }
 
-    /**
-     * Shag: /find nik
-     */
     private void doFind() {
         if (cancelled || currentNick == null) { state = State.IDLE; return; }
         waitFind = true;
         CommandQueue.add("find " + currentNick);
 
-        // Tajmaut na otvet /find
         delay(() -> {
             if (waitFind && state == State.DOING_FIND) {
                 waitFind = false;
@@ -270,16 +244,11 @@ public class AutoCallManager {
         }, 10000);
     }
 
-    /**
-     * Opredelyaem tip servera i podklyuchaemsya.
-     * Esli indeks otsutstvuet -> stavim 1.
-     */
     private void connect(String srv) {
         if (cancelled) { state = State.IDLE; return; }
 
         String command = null;
 
-        // Proveryaem l2anarchy RANSHE lanarchy
         Matcher m2 = l2anarchyP.matcher(srv);
         Matcher m1 = lanarchyP.matcher(srv);
         Matcher m3 = anarchyP.matcher(srv);
@@ -312,23 +281,18 @@ public class AutoCallManager {
         CommandQueue.add(command);
 
         if (config.autoCall && !config.autoCheck) {
-            // AvtoVyzov (1 raz) - prosto podklyuchaemsya i vsyo
             msg("\u00a7a[Auto] \u041f\u0435\u0440\u0435\u0445\u043e\u0434 \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440. \u0410\u0432\u0442\u043e\u0412\u044b\u0437\u043e\u0432 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d.");
             state = State.IDLE;
             return;
         }
 
         if (config.autoCheck) {
-            // AvtoProverka (cikl) - zhdyom 10 sek, potom proveryaem playtime
             state = State.CONNECTING_SERVER;
             msg("\u00a7e[Auto] \u0416\u0434\u0443 10 \u0441\u0435\u043a \u043f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430...");
             delay(this::startPlaytimeCheck, 10000);
         }
     }
 
-    /**
-     * Nachalo proverki plejtajma.
-     */
     private void startPlaytimeCheck() {
         if (cancelled) { state = State.IDLE; return; }
         state = State.DOING_PLAYTIME;
@@ -336,32 +300,21 @@ public class AutoCallManager {
         sendPlaytime();
     }
 
-    /**
-     * Otpravka /playtime nik
-     */
     private void sendPlaytime() {
         if (cancelled || currentNick == null) { state = State.IDLE; return; }
         waitPt = true;
         CommandQueue.add("playtime " + currentNick);
     }
 
-    /**
-     * Obrabotka rezultata /playtime.
-     * @param lastActivitySec - poslednyaya aktivnost v sekundah
-     */
     private void handlePlaytimeResult(int lastActivitySec) {
         if (cancelled) { state = State.IDLE; return; }
 
         if (lastActivitySec < 7) {
-            // Igrok AKTIVEN -> frizim
             msg("\u00a7a[Auto] \u0418\u0433\u0440\u043e\u043a \u0430\u043a\u0442\u0438\u0432\u0435\u043d (" + lastActivitySec + "\u0441). \u0424\u0440\u0438\u0437\u0438\u043c!");
             CommandQueue.add("hm spyfrz");
             state = State.WAITING_SPYFRZ;
-            // Zhdyom bana/anfriza v onChatMessage
         } else {
-            // Igrok AFK
             if (state == State.DOING_PLAYTIME) {
-                // Pervyj raz - nachinaem cikl proverki (30 sekund)
                 state = State.CHECKING_PLAYTIME_LOOP;
                 ptStart = System.currentTimeMillis();
                 msg("\u00a7e[Auto] \u0418\u0433\u0440\u043e\u043a \u0410\u0424\u041a (" + lastActivitySec + "\u0441). \u041f\u0440\u043e\u0432\u0435\u0440\u044f\u044e 30 \u0441\u0435\u043a...");
@@ -369,14 +322,12 @@ public class AutoCallManager {
 
             long elapsed = System.currentTimeMillis() - ptStart;
             if (elapsed < 30000) {
-                // Eshchyo yest vremya - povtoryaem cherez 3 sek
                 delay(() -> {
                     if (state == State.CHECKING_PLAYTIME_LOOP && !cancelled) {
                         sendPlaytime();
                     }
                 }, 3000);
             } else {
-                // 30 sekund proshlo, igrok vsyo eshchyo AFK -> zavershaem report
                 msg("\u00a7e[Auto] \u0418\u0433\u0440\u043e\u043a \u0410\u0424\u041a >30\u0441. \u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u044e...");
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
@@ -384,11 +335,6 @@ public class AutoCallManager {
         }
     }
 
-    // ===== ZAVERSHENIE REPORTA =====
-
-    /**
-     * Shag 1: /reportlist (otkryvaet menyu reportov)
-     */
     private void closeStep1() {
         if (cancelled) { state = State.IDLE; return; }
         CommandQueue.add("reportlist");
@@ -396,9 +342,6 @@ public class AutoCallManager {
         delay(this::closeStep2, 1500);
     }
 
-    /**
-     * Shag 2: klik po slotu 47 (menyu dejstvij)
-     */
     private void closeStep2() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) {
@@ -414,9 +357,6 @@ public class AutoCallManager {
         delay(this::closeStep3, 1500);
     }
 
-    /**
-     * Shag 3: klik po slotu 16 (zakryt report), zatem "-" v chat
-     */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) {
@@ -429,7 +369,6 @@ public class AutoCallManager {
             16, 0, SlotActionType.PICKUP, client.player
         );
 
-        // Otpravlyaem "-" v chat i perehodim k reopening
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
             sendChatMessage("-");
@@ -439,9 +378,6 @@ public class AutoCallManager {
         }, 500);
     }
 
-    /**
-     * Pereotkrytie /reportlist i poisk sleduyushchego reporta (dlya autoCheck).
-     */
     private void reopen() {
         if (cancelled) { state = State.IDLE; return; }
         if (!config.autoCheck) {
@@ -460,8 +396,6 @@ public class AutoCallManager {
             search();
         }, 1500);
     }
-
-    // ===== UTILITY =====
 
     private void msg(String m) {
         if (client.player != null) {
