@@ -1,9 +1,6 @@
-# Gradle
 .gradle/
 build/
 out/
-
-# IDE
 .idea/
 *.iml
 *.ipr
@@ -14,19 +11,11 @@ out/
 .project
 *.launch
 .metadata
-
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Fabric
 run/
 logs/
 *.log
-
-# Java
 *.class
-
-# Other
 remappedSrc/

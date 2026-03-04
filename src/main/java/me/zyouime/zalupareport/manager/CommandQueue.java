@@ -1,6 +1,7 @@
 package me.zyouime.zalupareport.manager;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ChatScreen;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -21,7 +22,7 @@ public class CommandQueue {
 
     public static void tick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.getNetworkHandler() == null) return;
+        if (mc.player == null) return;
 
         tickCounter++;
         if (tickCounter < DELAY) return;
@@ -31,9 +32,13 @@ public class CommandQueue {
             String cmd = queue.poll();
 
             mc.execute(() -> {
-                if (mc.getNetworkHandler() != null && mc.player != null) {
-                    mc.getNetworkHandler().sendCommand(cmd);
-                }
+                // Используем ChatScreen как в оригинальном коде
+                // Это позволяет отправлять команды других модов (например /hm spy)
+                mc.setScreen(null);
+                ChatScreen chatScreen = new ChatScreen("");
+                mc.setScreen(chatScreen);
+                chatScreen.sendMessage("/" + cmd, false);
+                mc.setScreen(null);
             });
         }
     }
