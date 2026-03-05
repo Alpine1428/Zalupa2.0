@@ -3,7 +3,6 @@ package me.zyouime.zalupareport.manager;
 import me.zyouime.zalupareport.client.ZalupareportClient;
 import me.zyouime.zalupareport.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtElement;
@@ -31,12 +30,6 @@ public class AutoCallManager {
         REOPENING
     }
 
-    /**
-     * Причина завершения репорта - определяет какой слот кликать на step3:
-     * - PLAYER_AFK: игрок АФК >30с -> слот 14 (индекс 13)
-     * - PLAYER_BANNED: /hm sban или /banip -> слот 16 (индекс 15)
-     * - PLAYER_UNFROZEN: /hm unfrz -> слот 12 (индекс 11)
-     */
     public enum CloseReason {
         PLAYER_AFK,
         PLAYER_BANNED,
@@ -60,12 +53,8 @@ public class AutoCallManager {
     private final Pattern l2anarchyP = Pattern.compile("^l2anarchy(\\d*)$");
     private final Pattern lanarchyP = Pattern.compile("^lanarchy(\\d*)$");
     private final Pattern anarchyP = Pattern.compile("^anarchy(\\d*)$");
-
-    // Входящие: разделяем бан и анфриз
     private final Pattern banIncoming = Pattern.compile("(?i)(?:hm sban|banip)");
     private final Pattern unfrzIncoming = Pattern.compile("(?i)(?:hm unfrz|hm unfreezing)");
-
-    // Исходящие: разделяем бан и анфриз
     private final Pattern banOutgoing = Pattern.compile("(?i)^/(?:hm sban|banip)");
     private final Pattern unfrzOutgoing = Pattern.compile("(?i)^/(?:hm unfrz|hm unfreezing)");
 
@@ -221,17 +210,15 @@ public class AutoCallManager {
         }
 
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
-            // Проверяем анфриз
             if (unfrzIncoming.matcher(message).find()) {
-                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437 (\u0432\u0445\u043e\u0434\u044f\u0449\u0435\u0435). \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_UNFROZEN;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
                 return;
             }
-            // Проверяем бан
             if (banIncoming.matcher(message).find()) {
-                msg("\u00a7a[Auto] \u0411\u0430\u043d (\u0432\u0445\u043e\u0434\u044f\u0449\u0435\u0435). \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_BANNED;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
@@ -243,17 +230,15 @@ public class AutoCallManager {
         if (state == State.IDLE || cancelled) return;
 
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
-            // Проверяем анфриз
             if (unfrzOutgoing.matcher(command).find()) {
-                msg("\u00a7e[Auto] \u0412\u044b \u0430\u043d\u0444\u0440\u0438\u0437\u0438\u043b\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_UNFROZEN;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 2000);
                 return;
             }
-            // Проверяем бан
             if (banOutgoing.matcher(command).find()) {
-                msg("\u00a7a[Auto] \u0412\u044b \u0437\u0430\u0431\u0430\u043d\u0438\u043b\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_BANNED;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 2000);
@@ -379,12 +364,6 @@ public class AutoCallManager {
     }
 
     // ===== ЗАВЕРШЕНИЕ РЕПОРТА =====
-    // /reportlist -> 2с -> ЛКМ слот 47(46) -> 1с -> ЛКМ слот X -> "-" -> /hm spy -> поиск
-    //
-    // Слот X зависит от closeReason:
-    //   AFK:      слот 14 (индекс 13)
-    //   BANNED:   слот 16 (индекс 15)
-    //   UNFROZEN: слот 12 (индекс 11)
 
     private void closeStep1() {
         if (cancelled) { state = State.IDLE; return; }
@@ -419,20 +398,19 @@ public class AutoCallManager {
             return;
         }
 
-        // Определяем слот по причине завершения
         int slotIndex;
         String slotName;
         switch (closeReason) {
             case PLAYER_AFK:
-                slotIndex = 13;  // слот 14 (индекс 13)
+                slotIndex = 13;
                 slotName = "14";
                 break;
             case PLAYER_BANNED:
-                slotIndex = 15;  // слот 16 (индекс 15)
+                slotIndex = 15;
                 slotName = "16";
                 break;
             case PLAYER_UNFROZEN:
-                slotIndex = 11;  // слот 12 (индекс 11)
+                slotIndex = 11;
                 slotName = "12";
                 break;
             default:
@@ -441,36 +419,52 @@ public class AutoCallManager {
                 break;
         }
 
-        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 " + slotName + " (\u043f\u0440\u0438\u0447\u0438\u043d\u0430: " + closeReason.name() + ")");
+        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 " + slotName + " (" + closeReason.name() + ")");
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
             slotIndex, 0, SlotActionType.PICKUP, client.player
         );
         state = State.CLOSING_STEP4;
-        delay(this::closeStep4, 500);
+        delay(this::closeStep4, 1000);
     }
 
+    /**
+     * Закрываем экран, отправляем "-" в чат, потом /hm spy
+     */
     private void closeStep4() {
         if (cancelled) { state = State.IDLE; return; }
 
-        msg("\u00a7e[Auto] '-' \u0432 \u0447\u0430\u0442");
+        // Сначала закрываем GUI если открыто
         client.execute(() -> {
-            client.setScreen(null);
-            ChatScreen chatScreen = new ChatScreen("");
-            client.setScreen(chatScreen);
-            chatScreen.sendMessage("-", false);
-            client.setScreen(null);
+            if (client.player != null && client.currentScreen != null) {
+                client.player.closeHandledScreen();
+            }
         });
 
-        msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
-
+        // Ждём пока экран закроется, потом отправляем "-"
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
-            msg("\u00a7e[Auto] /hm spy");
-            CommandQueue.add("hm spy");
-            state = State.REOPENING;
-            delay(AutoCallManager.this::reopen, 1500);
-        }, 1000);
+
+            msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e '-'");
+
+            // Отправляем "-" как обычное сообщение в чат
+            client.execute(() -> {
+                if (client.getNetworkHandler() != null) {
+                    client.getNetworkHandler().sendChatMessage("-");
+                }
+            });
+
+            msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d. v10");
+
+            // Через 1с отправляем /hm spy
+            delay(() -> {
+                if (cancelled) { state = State.IDLE; return; }
+                msg("\u00a7e[Auto] /hm spy");
+                CommandQueue.add("hm spy");
+                state = State.REOPENING;
+                delay(AutoCallManager.this::reopen, 1500);
+            }, 1000);
+        }, 500);
     }
 
     private void reopen() {
