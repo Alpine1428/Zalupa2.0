@@ -3,6 +3,7 @@ package me.zyouime.zalupareport.manager;
 import me.zyouime.zalupareport.client.ZalupareportClient;
 import me.zyouime.zalupareport.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtElement;
@@ -26,6 +27,7 @@ public class AutoCallManager {
         CLOSING_STEP1,
         CLOSING_STEP2,
         CLOSING_STEP3,
+        CLOSING_STEP4,
         REOPENING
     }
 
@@ -334,7 +336,7 @@ public class AutoCallManager {
     }
 
     // ===== ЗАВЕРШЕНИЕ РЕПОРТА =====
-    // /reportlist -> 2с -> ЛКМ слот 47 (индекс 46) -> 1с -> ЛКМ слот 16 (индекс 15) -> "-"
+    // /reportlist -> 2с -> ЛКМ слот 46 -> 1с -> ЛКМ слот 15 -> 0.5с -> "-" в чат -> 1с -> /hm spy -> поиск
 
     private void closeStep1() {
         if (cancelled) { state = State.IDLE; return; }
@@ -345,12 +347,6 @@ public class AutoCallManager {
         delay(this::closeStep2, 2000);
     }
 
-    /**
-     * ЛКМ по 47-му слоту GUI.
-     * В Minecraft слоты нумеруются с 0, поэтому 47-й слот = индекс 46.
-     * button=0 = LEFT MOUSE BUTTON
-     * SlotActionType.PICKUP = обычный клик
-     */
     private void closeStep2() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) {
@@ -358,22 +354,15 @@ public class AutoCallManager {
             state = State.IDLE;
             return;
         }
-        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 47 (\u0438\u043d\u0434\u0435\u043a\u0441 46)");
+        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 47");
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            46,    // 47-й слот = индекс 46 (нумерация с 0)
-            0,     // button = 0 = LEFT CLICK
-            SlotActionType.PICKUP,
-            client.player
+            46, 0, SlotActionType.PICKUP, client.player
         );
         state = State.CLOSING_STEP3;
         delay(this::closeStep3, 1000);
     }
 
-    /**
-     * ЛКМ по 16-му слоту GUI.
-     * 16-й слот = индекс 15 (нумерация с 0).
-     */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) {
@@ -381,23 +370,44 @@ public class AutoCallManager {
             state = State.IDLE;
             return;
         }
-        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 16 (\u0438\u043d\u0434\u0435\u043a\u0441 15)");
+        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 16");
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            15,    // 16-й слот = индекс 15 (нумерация с 0)
-            0,     // button = 0 = LEFT CLICK
-            SlotActionType.PICKUP,
-            client.player
+            15, 0, SlotActionType.PICKUP, client.player
         );
+        state = State.CLOSING_STEP4;
+        delay(this::closeStep4, 500);
+    }
 
+    /**
+     * Отправляем "-" как обычное сообщение в чат (не скрывая).
+     * Потом /hm spy чтобы выйти из spy перед поиском нового репорта.
+     */
+    private void closeStep4() {
+        if (cancelled) { state = State.IDLE; return; }
+
+        // Отправляем "-" как обычное сообщение в чат через ChatScreen
+        // чтобы серверный плагин его увидел
+        msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e '-' \u0432 \u0447\u0430\u0442");
+        client.execute(() -> {
+            client.setScreen(null);
+            ChatScreen chatScreen = new ChatScreen("");
+            client.setScreen(chatScreen);
+            chatScreen.sendMessage("-", false);
+            client.setScreen(null);
+        });
+
+        msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
+
+        // Ждём 1 сек, потом /hm spy (выход из spy)
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
-            msg("\u00a7e[Auto] '-'");
-            sendChatMessage("-");
-            msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
+            msg("\u00a7e[Auto] /hm spy");
+            CommandQueue.add("hm spy");
+
             state = State.REOPENING;
             delay(AutoCallManager.this::reopen, 1500);
-        }, 500);
+        }, 1000);
     }
 
     private void reopen() {
@@ -416,13 +426,6 @@ public class AutoCallManager {
 
     private void msg(String m) {
         if (client.player != null) client.execute(() -> client.player.sendMessage(Text.of(m)));
-    }
-
-    private void sendChatMessage(String m) {
-        if (client.player == null) return;
-        client.execute(() -> {
-            if (client.getNetworkHandler() != null) client.getNetworkHandler().sendChatMessage(m);
-        });
     }
 
     private void delay(Runnable r, long ms) {
