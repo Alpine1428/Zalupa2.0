@@ -9,7 +9,8 @@
     "HandledScreenMixin",
     "INativeImageMixin",
     "KeybindingAccessor",
-    "MinecraftClientMixin"
+    "MinecraftClientMixin",
+    "OutgoingChatMixin"
   ],
   "injectors": { "defaultRequire": 1 },
   "overwrites": { "requireAnnotations": true }

@@ -3,9 +3,11 @@ package me.zyouime.zalupareport.manager;
 import me.zyouime.zalupareport.client.ZalupareportClient;
 import me.zyouime.zalupareport.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import java.util.List;
@@ -51,8 +53,14 @@ public class AutoCallManager {
     private final Pattern lanarchyP = Pattern.compile("^lanarchy(\\d*)$");
     private final Pattern anarchyP = Pattern.compile("^anarchy(\\d*)$");
 
-    private final Pattern banPattern = Pattern.compile(
-        "(?i)(?:/hm sban|/banip|/hm unfrz|/hm unfreezing|hm sban|banip)"
+    // Паттерн для ВХОДЯЩИХ сообщений чата (от сервера)
+    private final Pattern banPatternIncoming = Pattern.compile(
+        "(?i)(?:hm sban|banip|hm unfrz|hm unfreezing)"
+    );
+
+    // Паттерн для ИСХОДЯЩИХ команд игрока (/hm sban, /banip, /hm unfrz)
+    private final Pattern banPatternOutgoing = Pattern.compile(
+        "(?i)^/(?:hm sban|banip|hm unfrz|hm unfreezing)"
     );
 
     public State state = State.IDLE;
@@ -62,7 +70,6 @@ public class AutoCallManager {
     private boolean waitPt;
     private boolean foundAny;
     private volatile boolean cancelled = false;
-    // Флаг: идёт сканирование плейтайма (для скрытия сообщений в чате)
     private boolean scanningPlaytime = false;
 
     public AutoCallManager(ZalupareportClient mod) {
@@ -85,10 +92,6 @@ public class AutoCallManager {
         return (config.autoCall || config.autoCheck) && state != State.IDLE;
     }
 
-    /**
-     * Возвращает true если сейчас идёт сканирование плейтайма
-     * (ChatMessageMixin использует это чтобы скрывать сообщения)
-     */
     public boolean isScanningPlaytime() {
         return scanningPlaytime;
     }
@@ -191,6 +194,10 @@ public class AutoCallManager {
         return m.group(g) == null ? 0 : Integer.parseInt(m.group(g));
     }
 
+    /**
+     * Обработка ВХОДЯЩИХ сообщений чата (от сервера).
+     * Вызывается из ChatMessageMixin.
+     */
     public void onChatMessage(String message) {
         if (state == State.IDLE || cancelled) return;
 
@@ -223,13 +230,32 @@ public class AutoCallManager {
             }
         }
 
-        // === Ожидание модерации после /hm spyfrz ===
+        // === Входящие сообщения содержащие команды бана (от сервера) ===
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
-            Matcher bm = banPattern.matcher(message);
+            Matcher bm = banPatternIncoming.matcher(message);
             if (bm.find()) {
-                msg("\u00a7a[Auto] \u041e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e \u0440\u0435\u043f\u043e\u0440\u0442...");
+                msg("\u00a7a[Auto] \u041e\u0431\u043d\u0430\u0440\u0443\u0436\u0435\u043d\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u0438 (\u0432\u0445\u043e\u0434\u044f\u0449\u0435\u0435). \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
+            }
+        }
+    }
+
+    /**
+     * Обработка ИСХОДЯЩИХ команд (что игрок сам вводит).
+     * Вызывается из OutgoingChatMixin.
+     * Ловит когда игрок сам пишет /hm sban, /banip, /hm unfrz
+     */
+    public void onOutgoingCommand(String command) {
+        if (state == State.IDLE || cancelled) return;
+
+        // Когда игрок сам банит во время WAITING_SPYFRZ
+        if (config.autoCheck && state == State.WAITING_SPYFRZ) {
+            Matcher bm = banPatternOutgoing.matcher(command);
+            if (bm.find()) {
+                msg("\u00a7a[Auto] \u0412\u044b \u0437\u0430\u0431\u0430\u043d\u0438\u043b\u0438 \u0438\u0433\u0440\u043e\u043a\u0430. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e \u0440\u0435\u043f\u043e\u0440\u0442...");
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 2000);
             }
         }
     }
@@ -349,19 +375,17 @@ public class AutoCallManager {
             if (state == State.DOING_PLAYTIME) {
                 state = State.CHECKING_PLAYTIME_LOOP;
                 ptStart = System.currentTimeMillis();
-                msg("\u00a7e[Auto] \u0418\u0433\u0440\u043e\u043a \u0410\u0424\u041a (" + lastActivitySec + "\u0441). \u041f\u0440\u043e\u0432\u0435\u0440\u044f\u044e 30\u0441...");
+                msg("\u00a7e[Auto] \u0410\u0424\u041a (" + lastActivitySec + "\u0441). \u041f\u0440\u043e\u0432\u0435\u0440\u044f\u044e 30\u0441...");
             }
 
             long elapsed = System.currentTimeMillis() - ptStart;
             if (elapsed < 30000) {
-                // Повтор через 3 сек
                 delay(() -> {
                     if (state == State.CHECKING_PLAYTIME_LOOP && !cancelled) {
                         sendPlaytime();
                     }
                 }, 3000);
             } else {
-                // 30 сек прошло - пропускаем
                 scanningPlaytime = false;
                 msg("\u00a7c[Auto] \u0410\u0424\u041a >30\u0441. \u041f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u044e...");
                 state = State.CLOSING_STEP1;
@@ -378,12 +402,12 @@ public class AutoCallManager {
         msg("\u00a7e[Auto] /reportlist");
         CommandQueue.add("reportlist");
         state = State.CLOSING_STEP2;
-        delay(this::closeStep2, 1500);
+        delay(this::closeStep2, 2000);
     }
 
     /**
-     * Клик по слоту 47 - ЛЕВАЯ КНОПКА МЫШИ (button=0)
-     * SlotActionType.PICKUP с button=0 = левый клик
+     * Клик по слоту 47 - имитация ЛЕВОЙ КНОПКИ МЫШИ
+     * Используем onMouseClick через HandledScreen для максимальной совместимости
      */
     private void closeStep2() {
         if (cancelled) { state = State.IDLE; return; }
@@ -393,20 +417,24 @@ public class AutoCallManager {
             return;
         }
         msg("\u00a7e[Auto] \u041a\u043b\u0438\u043a \u041b\u041a\u041c \u0441\u043b\u043e\u0442 47");
-        // button=0 = ЛЕВАЯ кнопка мыши, SlotActionType.PICKUP = обычный клик
+
+        // clickSlot: syncId, slotId, button(0=ЛКМ), actionType, player
+        // button=0 = LEFT MOUSE BUTTON
+        // SlotActionType.PICKUP = обычный клик мышью
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            47,
-            0,
-            SlotActionType.PICKUP,
+            47,       // slot index
+            0,        // button: 0 = LEFT CLICK
+            SlotActionType.PICKUP,  // обычный клик
             client.player
         );
+
         state = State.CLOSING_STEP3;
-        delay(this::closeStep3, 1500);
+        delay(this::closeStep3, 2000);
     }
 
     /**
-     * Клик по слоту 16 - ЛЕВАЯ КНОПКА МЫШИ (button=0)
+     * Клик по слоту 16 - имитация ЛЕВОЙ КНОПКИ МЫШИ
      */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
@@ -416,18 +444,19 @@ public class AutoCallManager {
             return;
         }
         msg("\u00a7e[Auto] \u041a\u043b\u0438\u043a \u041b\u041a\u041c \u0441\u043b\u043e\u0442 16");
-        // button=0 = ЛЕВАЯ кнопка мыши
+
+        // button=0 = LEFT CLICK
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            16,
-            0,
+            16,       // slot index
+            0,        // button: 0 = LEFT CLICK
             SlotActionType.PICKUP,
             client.player
         );
 
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
-            msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e '-'");
+            msg("\u00a7e[Auto] '-'");
             sendChatMessage("-");
             msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
             state = State.REOPENING;

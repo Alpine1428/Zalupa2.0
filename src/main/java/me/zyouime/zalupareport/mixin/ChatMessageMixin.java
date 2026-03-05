@@ -25,7 +25,7 @@ public class ChatMessageMixin {
 
         String msg = message.getString();
 
-        // Передаём сообщение в AutoCallManager
+        // Передаем входящее сообщение в AutoCallManager
         inst.autoCallManager.onChatMessage(msg);
 
         // Скрываем сообщения PlayTimeAPI во время сканирования
@@ -36,9 +36,6 @@ public class ChatMessageMixin {
         }
     }
 
-    /**
-     * Проверяет, является ли сообщение частью вывода /playtime
-     */
     private boolean isPlaytimeMessage(String msg) {
         if (msg.contains("------------------PlayTimeAPI------------------")) return true;
         if (msg.contains("---------------------------------------------------")) return true;
