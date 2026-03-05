@@ -174,7 +174,6 @@ public class AutoCallManager {
         return m.group(g) == null ? 0 : Integer.parseInt(m.group(g));
     }
 
-    /** Входящие сообщения чата (от сервера) */
     public void onChatMessage(String message) {
         if (state == State.IDLE || cancelled) return;
 
@@ -205,20 +204,19 @@ public class AutoCallManager {
 
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             if (banPatternIncoming.matcher(message).find()) {
-                msg("\u00a7a[Auto] \u041c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u044f (\u0432\u0445\u043e\u0434\u044f\u0449\u0435\u0435). \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7a[Auto] \u041c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u044f. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
             }
         }
     }
 
-    /** Исходящие команды игрока (то что сам пишет) */
     public void onOutgoingCommand(String command) {
         if (state == State.IDLE || cancelled) return;
 
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             if (banPatternOutgoing.matcher(command).find()) {
-                msg("\u00a7a[Auto] \u0412\u044b \u0437\u0430\u0431\u0430\u043d\u0438\u043b\u0438 \u0438\u0433\u0440\u043e\u043a\u0430. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                msg("\u00a7a[Auto] \u0412\u044b \u0437\u0430\u0431\u0430\u043d\u0438\u043b\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 2000);
             }
@@ -271,7 +269,7 @@ public class AutoCallManager {
         }
 
         if (command == null) {
-            msg("\u00a7c[Auto] \u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0441\u0435\u0440\u0432\u0435\u0440: " + srv);
+            msg("\u00a7c[Auto] \u041d\u0435\u0438\u0437\u0432. \u0441\u0435\u0440\u0432\u0435\u0440: " + srv);
             if (config.autoCheck) { state = State.CLOSING_STEP1; delay(this::closeStep1, 1000); }
             else state = State.IDLE;
             return;
@@ -336,7 +334,7 @@ public class AutoCallManager {
     }
 
     // ===== ЗАВЕРШЕНИЕ РЕПОРТА =====
-    // /reportlist -> ЛКМ слот 47 -> ждём 1сек -> ЛКМ слот 16 -> "-" в чат
+    // /reportlist -> 2с -> ЛКМ слот 47 (индекс 46) -> 1с -> ЛКМ слот 16 (индекс 15) -> "-"
 
     private void closeStep1() {
         if (cancelled) { state = State.IDLE; return; }
@@ -344,15 +342,14 @@ public class AutoCallManager {
         msg("\u00a7e[Auto] /reportlist");
         CommandQueue.add("reportlist");
         state = State.CLOSING_STEP2;
-        // Ждём 2 секунды пока меню откроется
         delay(this::closeStep2, 2000);
     }
 
     /**
-     * ЛКМ по слоту 47
-     * clickSlot(syncId, slot=47, button=0, PICKUP, player)
+     * ЛКМ по 47-му слоту GUI.
+     * В Minecraft слоты нумеруются с 0, поэтому 47-й слот = индекс 46.
      * button=0 = LEFT MOUSE BUTTON
-     * SlotActionType.PICKUP = обычный клик мышью (ЛКМ)
+     * SlotActionType.PICKUP = обычный клик
      */
     private void closeStep2() {
         if (cancelled) { state = State.IDLE; return; }
@@ -361,21 +358,21 @@ public class AutoCallManager {
             state = State.IDLE;
             return;
         }
-        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 47");
+        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 47 (\u0438\u043d\u0434\u0435\u043a\u0441 46)");
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            47,    // slot
+            46,    // 47-й слот = индекс 46 (нумерация с 0)
             0,     // button = 0 = LEFT CLICK
             SlotActionType.PICKUP,
             client.player
         );
         state = State.CLOSING_STEP3;
-        // Ждём 1 секунду перед кликом на слот 16
         delay(this::closeStep3, 1000);
     }
 
     /**
-     * ЛКМ по слоту 16, потом "-" в чат
+     * ЛКМ по 16-му слоту GUI.
+     * 16-й слот = индекс 15 (нумерация с 0).
      */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
@@ -384,16 +381,15 @@ public class AutoCallManager {
             state = State.IDLE;
             return;
         }
-        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 16");
+        msg("\u00a7e[Auto] \u041b\u041a\u041c \u0441\u043b\u043e\u0442 16 (\u0438\u043d\u0434\u0435\u043a\u0441 15)");
         client.interactionManager.clickSlot(
             client.player.currentScreenHandler.syncId,
-            16,    // slot
+            15,    // 16-й слот = индекс 15 (нумерация с 0)
             0,     // button = 0 = LEFT CLICK
             SlotActionType.PICKUP,
             client.player
         );
 
-        // Ждём 500мс, потом "-" в чат
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
             msg("\u00a7e[Auto] '-'");
