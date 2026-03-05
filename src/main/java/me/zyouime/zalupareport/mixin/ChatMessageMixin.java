@@ -1,7 +1,6 @@
 package me.zyouime.zalupareport.mixin;
 
 import me.zyouime.zalupareport.client.ZalupareportClient;
-import me.zyouime.zalupareport.manager.AutoCallManager;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.gui.hud.MessageIndicator;
 import net.minecraft.network.message.MessageSignatureData;
@@ -25,10 +24,8 @@ public class ChatMessageMixin {
 
         String msg = message.getString();
 
-        // Передаем входящее сообщение в AutoCallManager
         inst.autoCallManager.onChatMessage(msg);
 
-        // Скрываем сообщения PlayTimeAPI во время сканирования
         if (inst.autoCallManager.isScanningPlaytime()) {
             if (isPlaytimeMessage(msg)) {
                 ci.cancel();
