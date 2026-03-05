@@ -32,8 +32,6 @@ public class CommandQueue {
             String cmd = queue.poll();
 
             mc.execute(() -> {
-                // Используем ChatScreen как в оригинальном коде
-                // Это позволяет отправлять команды других модов (например /hm spy)
                 mc.setScreen(null);
                 ChatScreen chatScreen = new ChatScreen("");
                 mc.setScreen(chatScreen);
