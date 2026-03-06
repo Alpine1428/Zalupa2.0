@@ -23,6 +23,7 @@ public class AutoCallManager {
         DOING_PLAYTIME,
         CHECKING_PLAYTIME_LOOP,
         WAITING_SPYFRZ,
+        WAITING_REPORT_OPEN,
         CLOSING_STEP1,
         CLOSING_STEP2,
         CLOSING_STEP3,
@@ -30,10 +31,18 @@ public class AutoCallManager {
         REOPENING
     }
 
+    /**
+     * Причина завершения:
+     * PLAYER_AFK       -> слот 14 (idx 13), в чат "afk"
+     * PLAYER_BANNED    -> слот 16 (idx 15), в чат ничего
+     * PLAYER_UNFROZEN  -> слот 14 (idx 13), в чат "-"
+     * PLAYER_AFK_SERVER-> слот 14 (idx 13), в чат "afk" (сервер сказал "Игрок афк")
+     */
     public enum CloseReason {
         PLAYER_AFK,
         PLAYER_BANNED,
-        PLAYER_UNFROZEN
+        PLAYER_UNFROZEN,
+        PLAYER_AFK_SERVER
     }
 
     private final ModConfig config;
@@ -53,10 +62,20 @@ public class AutoCallManager {
     private final Pattern l2anarchyP = Pattern.compile("^l2anarchy(\\d*)$");
     private final Pattern lanarchyP = Pattern.compile("^lanarchy(\\d*)$");
     private final Pattern anarchyP = Pattern.compile("^anarchy(\\d*)$");
+
+    // Бан (входящие/исходящие)
     private final Pattern banIncoming = Pattern.compile("(?i)(?:hm sban|banip)");
-    private final Pattern unfrzIncoming = Pattern.compile("(?i)(?:hm unfrz|hm unfreezing)");
     private final Pattern banOutgoing = Pattern.compile("(?i)^/(?:hm sban|banip)");
-    private final Pattern unfrzOutgoing = Pattern.compile("(?i)^/(?:hm unfrz|hm unfreezing)");
+
+    // Анфриз/spy выход (входящие/исходящие)
+    private final Pattern unfrzIncoming = Pattern.compile("(?i)(?:hm unfrz|hm unfreezing|hm spy)");
+    private final Pattern unfrzOutgoing = Pattern.compile("(?i)^/(?:hm unfrz|hm unfreezing|hm spy)");
+
+    // "Открываем репорт ..."
+    private final Pattern openReportPattern = Pattern.compile("\u00a7b\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c \u0440\u0435\u043f\u043e\u0440\u0442");
+
+    // "Игрок афк проследите сами"
+    private final Pattern afkServerPattern = Pattern.compile("\u00a7c\u0418\u0433\u0440\u043e\u043a \u0430\u0444\u043a");
 
     public State state = State.IDLE;
     private String currentNick;
@@ -181,9 +200,13 @@ public class AutoCallManager {
         return m.group(g) == null ? 0 : Integer.parseInt(m.group(g));
     }
 
+    /**
+     * Входящие сообщения чата
+     */
     public void onChatMessage(String message) {
         if (state == State.IDLE || cancelled) return;
 
+        // === /find ответ ===
         if (state == State.DOING_FIND && waitFind) {
             Matcher m = findPattern.matcher(message);
             if (m.find()) {
@@ -193,6 +216,7 @@ public class AutoCallManager {
             }
         }
 
+        // === /playtime ответ ===
         if (config.autoCheck
             && (state == State.DOING_PLAYTIME || state == State.CHECKING_PLAYTIME_LOOP)
             && waitPt) {
@@ -209,39 +233,94 @@ public class AutoCallManager {
             }
         }
 
+        // === "Открываем репорт ..." -> начинаем отслеживание ===
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
-            if (unfrzIncoming.matcher(message).find()) {
-                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
-                closeReason = CloseReason.PLAYER_UNFROZEN;
+            if (openReportPattern.matcher(message).find()) {
+                msg("\u00a7e[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u043e\u0442\u043a\u0440\u044b\u0442. \u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u044e...");
+                state = State.WAITING_REPORT_OPEN;
+                return;
+            }
+        }
+
+        // === Отслеживание после "Открываем репорт" ===
+        if (config.autoCheck && state == State.WAITING_REPORT_OPEN) {
+            // "Игрок афк проследите сами"
+            if (afkServerPattern.matcher(message).find()) {
+                msg("\u00a7e[Auto] \u0421\u0435\u0440\u0432\u0435\u0440: \u0438\u0433\u0440\u043e\u043a \u0430\u0444\u043a. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_AFK_SERVER;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
                 return;
             }
+
+            // /hm sban или /banip -> бан
             if (banIncoming.matcher(message).find()) {
                 msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_BANNED;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 1000);
+                return;
+            }
+
+            // /hm unfrz /hm unfreezing /hm spy -> анфриз
+            if (unfrzIncoming.matcher(message).find()) {
+                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437/spy. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_UNFROZEN;
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 1000);
+                return;
+            }
+        }
+
+        // === Старый WAITING_SPYFRZ (до "Открываем репорт") ===
+        if (config.autoCheck && state == State.WAITING_SPYFRZ) {
+            // "Игрок афк проследите сами"
+            if (afkServerPattern.matcher(message).find()) {
+                msg("\u00a7e[Auto] \u0421\u0435\u0440\u0432\u0435\u0440: \u0438\u0433\u0440\u043e\u043a \u0430\u0444\u043a. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_AFK_SERVER;
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 1000);
+                return;
+            }
+
+            if (banIncoming.matcher(message).find()) {
+                msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_BANNED;
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 1000);
+                return;
+            }
+
+            if (unfrzIncoming.matcher(message).find()) {
+                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437/spy. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_UNFROZEN;
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 1000);
+                return;
             }
         }
     }
 
+    /**
+     * Исходящие команды игрока
+     */
     public void onOutgoingCommand(String command) {
         if (state == State.IDLE || cancelled) return;
 
-        if (config.autoCheck && state == State.WAITING_SPYFRZ) {
-            if (unfrzOutgoing.matcher(command).find()) {
-                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
-                closeReason = CloseReason.PLAYER_UNFROZEN;
+        if (config.autoCheck && (state == State.WAITING_SPYFRZ || state == State.WAITING_REPORT_OPEN)) {
+            if (banOutgoing.matcher(command).find()) {
+                msg("\u00a7a[Auto] \u0412\u044b \u0437\u0430\u0431\u0430\u043d\u0438\u043b\u0438. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_BANNED;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 2000);
                 return;
             }
-            if (banOutgoing.matcher(command).find()) {
-                msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
-                closeReason = CloseReason.PLAYER_BANNED;
+            if (unfrzOutgoing.matcher(command).find()) {
+                msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437/spy. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
+                closeReason = CloseReason.PLAYER_UNFROZEN;
                 state = State.CLOSING_STEP1;
                 delay(this::closeStep1, 2000);
+                return;
             }
         }
     }
@@ -390,6 +469,11 @@ public class AutoCallManager {
         delay(this::closeStep3, 1000);
     }
 
+    /**
+     * Клик по слоту зависит от причины:
+     * AFK / AFK_SERVER / UNFROZEN -> слот 14 (индекс 13)
+     * BANNED -> слот 16 (индекс 15)
+     */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) {
@@ -401,21 +485,16 @@ public class AutoCallManager {
         int slotIndex;
         String slotName;
         switch (closeReason) {
-            case PLAYER_AFK:
-                slotIndex = 13;
-                slotName = "14";
-                break;
             case PLAYER_BANNED:
-                slotIndex = 15;
+                slotIndex = 15;  // слот 16
                 slotName = "16";
                 break;
+            case PLAYER_AFK:
+            case PLAYER_AFK_SERVER:
             case PLAYER_UNFROZEN:
-                slotIndex = 11;
-                slotName = "12";
-                break;
             default:
-                slotIndex = 15;
-                slotName = "16";
+                slotIndex = 13;  // слот 14
+                slotName = "14";
                 break;
         }
 
@@ -429,34 +508,53 @@ public class AutoCallManager {
     }
 
     /**
-     * Закрываем экран, отправляем "-" в чат, потом /hm spy
+     * Отправляем сообщение в чат:
+     * AFK / AFK_SERVER -> "afk"
+     * UNFROZEN -> "-"
+     * BANNED -> ничего
      */
     private void closeStep4() {
         if (cancelled) { state = State.IDLE; return; }
 
-        // Сначала закрываем GUI если открыто
+        // Закрываем GUI
         client.execute(() -> {
             if (client.player != null && client.currentScreen != null) {
                 client.player.closeHandledScreen();
             }
         });
 
-        // Ждём пока экран закроется, потом отправляем "-"
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
 
-            msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e '-'");
+            // Определяем что писать в чат
+            String chatMsg = null;
+            switch (closeReason) {
+                case PLAYER_AFK:
+                case PLAYER_AFK_SERVER:
+                    chatMsg = "afk";
+                    break;
+                case PLAYER_UNFROZEN:
+                    chatMsg = "-";
+                    break;
+                case PLAYER_BANNED:
+                    // Ничего не пишем
+                    chatMsg = null;
+                    break;
+            }
 
-            // Отправляем "-" как обычное сообщение в чат
-            client.execute(() -> {
-                if (client.getNetworkHandler() != null) {
-                    client.getNetworkHandler().sendChatMessage("-");
-                }
-            });
+            if (chatMsg != null) {
+                final String toSend = chatMsg;
+                msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e '" + toSend + "'");
+                client.execute(() -> {
+                    if (client.getNetworkHandler() != null) {
+                        client.getNetworkHandler().sendChatMessage(toSend);
+                    }
+                });
+            }
 
-            msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d. v10");
+            msg("\u00a7a[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
 
-            // Через 1с отправляем /hm spy
+            // /hm spy
             delay(() -> {
                 if (cancelled) { state = State.IDLE; return; }
                 msg("\u00a7e[Auto] /hm spy");
@@ -495,4 +593,3 @@ public class AutoCallManager {
         t.start();
     }
 }
-// build v10 1772791933
