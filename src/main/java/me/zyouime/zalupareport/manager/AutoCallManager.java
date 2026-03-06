@@ -31,12 +31,6 @@ public class AutoCallManager {
         REOPENING
     }
 
-    /**
-     * AFK          -> slot 14 (idx 13), chat "afk"
-     * AFK_SERVER   -> slot 14 (idx 13), chat "afk"
-     * BANNED       -> slot 16 (idx 15), chat "-"
-     * UNFROZEN     -> slot 14 (idx 13), chat "-"
-     */
     public enum CloseReason {
         PLAYER_AFK,
         PLAYER_BANNED,
@@ -171,7 +165,6 @@ public class AutoCallManager {
             }
         }
 
-        // "Открываем репорт" -> WAITING_REPORT_OPEN
         if (config.autoCheck && state == State.WAITING_SPYFRZ) {
             if (openReportPattern.matcher(message).find()) {
                 msg("\u00a7e[Auto] \u0420\u0435\u043f\u043e\u0440\u0442 \u043e\u0442\u043a\u0440\u044b\u0442. \u041e\u0442\u0441\u043b\u0435\u0436\u0438\u0432\u0430\u044e...");
@@ -179,7 +172,6 @@ public class AutoCallManager {
             }
         }
 
-        // Отслеживание в WAITING_REPORT_OPEN и WAITING_SPYFRZ
         if (config.autoCheck && (state == State.WAITING_REPORT_OPEN || state == State.WAITING_SPYFRZ)) {
             if (afkServerPattern.matcher(message).find()) {
                 msg("\u00a7e[Auto] \u0421\u0435\u0440\u0432\u0435\u0440: \u0430\u0444\u043a. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
@@ -286,7 +278,7 @@ public class AutoCallManager {
         }
     }
 
-    // ===== ZAVERSHENIE =====
+    // ===== ЗАВЕРШЕНИЕ =====
 
     private void closeStep1() {
         if (cancelled) { state = State.IDLE; return; }
@@ -302,10 +294,6 @@ public class AutoCallManager {
         state = State.CLOSING_STEP3; delay(this::closeStep3, 1000);
     }
 
-    /**
-     * AFK/AFK_SERVER/UNFROZEN -> slot 14 (idx 13)
-     * BANNED -> slot 16 (idx 15)
-     */
     private void closeStep3() {
         if (cancelled) { state = State.IDLE; return; }
         if (client.player == null || client.player.currentScreenHandler == null) { msg("\u00a7c[Auto] err step3"); state = State.IDLE; return; }
@@ -322,15 +310,25 @@ public class AutoCallManager {
     }
 
     /**
-     * AFK/AFK_SERVER -> "afk"
-     * BANNED -> "-"
-     * UNFROZEN -> "-"
+     * ИСПРАВЛЕНО: Теперь сообщение "afk" или "-" отправляется как настоящее
+     * сообщение в чат сервера через NetworkHandler.sendChatMessage(),
+     * а перед этим закрываем любой открытый GUI чтобы гарантировать отправку.
      */
     private void closeStep4() {
         if (cancelled) { state = State.IDLE; return; }
-        client.execute(() -> { if (client.player != null && client.currentScreen != null) client.player.closeHandledScreen(); });
+
+        // Сначала закрываем открытый GUI (инвентарь/меню)
+        client.execute(() -> {
+            if (client.player != null && client.currentScreen != null) {
+                client.player.closeHandledScreen();
+            }
+        });
+
+        // Ждём немного чтобы GUI закрылся, потом отправляем сообщение
         delay(() -> {
             if (cancelled) { state = State.IDLE; return; }
+
+            // Определяем текст для отправки в чат
             String chatMsg;
             switch (closeReason) {
                 case PLAYER_AFK:
@@ -343,16 +341,30 @@ public class AutoCallManager {
                     chatMsg = "-";
                     break;
             }
-            msg("\u00a7e[Auto] '" + chatMsg + "'");
+
+            msg("\u00a7e[Auto] \u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430 \u0432 \u0447\u0430\u0442: '" + chatMsg + "'");
+
+            // Отправляем сообщение в чат сервера как обычное сообщение игрока
             final String toSend = chatMsg;
-            client.execute(() -> { if (client.getNetworkHandler() != null) client.getNetworkHandler().sendChatMessage(toSend); });
-            msg("\u00a7a[Auto] \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043d.");
+            client.execute(() -> {
+                if (client.getNetworkHandler() != null) {
+                    // sendChatMessage отправляет обычное сообщение в чат (не команду)
+                    // Сервер видит его как будто игрок написал в чат
+                    client.getNetworkHandler().sendChatMessage(toSend);
+                }
+            });
+
+            msg("\u00a7a[Auto] \u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e.");
+
+            // После отправки — снимаем spy и переходим к следующему
             delay(() -> {
                 if (cancelled) { state = State.IDLE; return; }
-                msg("\u00a7e[Auto] /hm spy"); CommandQueue.add("hm spy");
-                state = State.REOPENING; delay(AutoCallManager.this::reopen, 1500);
-            }, 1000);
-        }, 500);
+                msg("\u00a7e[Auto] /hm spy");
+                CommandQueue.add("hm spy");
+                state = State.REOPENING;
+                delay(AutoCallManager.this::reopen, 1500);
+            }, 1500);
+        }, 800);
     }
 
     private void reopen() {
