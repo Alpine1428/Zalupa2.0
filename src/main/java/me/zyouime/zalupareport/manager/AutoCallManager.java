@@ -34,7 +34,8 @@ public class AutoCallManager {
         PLAYER_AFK,
         PLAYER_BANNED,
         PLAYER_UNFROZEN,
-        PLAYER_AFK_SERVER
+        PLAYER_AFK_SERVER,
+        PLAYER_OFFLINE
     }
 
     private final ModConfig config;
@@ -57,12 +58,14 @@ public class AutoCallManager {
     private final Pattern banIncoming = Pattern.compile("(?i)(?:hm sban|banip)");
     private final Pattern banOutgoing = Pattern.compile("(?i)^/(?:hm sban|banip)");
 
-    // ИСПРАВЛЕНО: убрали "hm spy" из паттерна, оставили только unfrz/unfreezing
     private final Pattern unfrzIncoming = Pattern.compile("(?i)(?:hm unfrz|hm unfreezing)");
     private final Pattern unfrzOutgoing = Pattern.compile("(?i)^/(?:hm unfrz|hm unfreezing)");
 
     private final Pattern openReportPattern = Pattern.compile("\u00a7b\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c \u0440\u0435\u043f\u043e\u0440\u0442");
     private final Pattern afkServerPattern = Pattern.compile("\u00a7c\u0418\u0433\u0440\u043e\u043a \u0430\u0444\u043a");
+
+    // Паттерн для определения оффлайн-сессии: "Текущая сессия: (Оффлайн)"
+    private final Pattern offlineSessionPattern = Pattern.compile("\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f:.*\\(\u041e\u0444\u0444\u043b\u0430\u0439\u043d\\)");
 
     public State state = State.IDLE;
     private String currentNick;
@@ -75,9 +78,7 @@ public class AutoCallManager {
     private CloseReason closeReason = CloseReason.PLAYER_AFK;
     private int playtimeCheckCount = 0;
 
-    // Флаг: мы сами только что отправили /hm spyfrz, игнорируем эхо
     private boolean ignoreNextSpyfrz = false;
-    // Время после отправки spyfrz, в течение которого игнорируем эхо
     private long spyfrzSentTime = 0;
     private static final long SPYFRZ_IGNORE_WINDOW_MS = 3000;
 
@@ -185,6 +186,19 @@ public class AutoCallManager {
             }
         }
 
+        // Проверка оффлайн-сессии во время проверки плейтайма
+        if (config.autoCheck && state == State.CHECKING_PLAYTIME_LOOP) {
+            if (offlineSessionPattern.matcher(message).find()) {
+                waitPt = false;
+                scanningPlaytime = false;
+                msg("\u00a7c[Auto] \u0418\u0433\u0440\u043e\u043a \u043e\u0444\u0444\u043b\u0430\u0439\u043d! \u0417\u0430\u043a\u0440\u044b\u0432\u0430\u044e \u0440\u0435\u043f\u043e\u0440\u0442...");
+                closeReason = CloseReason.PLAYER_OFFLINE;
+                state = State.CLOSING_STEP1;
+                delay(this::closeStep1, 1000);
+                return;
+            }
+        }
+
         // Ответ на /playtime
         if (config.autoCheck && state == State.CHECKING_PLAYTIME_LOOP && waitPt) {
             if (message.contains("\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c")) {
@@ -212,7 +226,6 @@ public class AutoCallManager {
         // Отслеживание бана/анфриза/афк сервера ТОЛЬКО в WAITING_REPORT_OPEN и WAITING_SPYFRZ
         if (config.autoCheck && (state == State.WAITING_REPORT_OPEN || state == State.WAITING_SPYFRZ)) {
 
-            // Проверяем АФК сервера
             if (afkServerPattern.matcher(message).find()) {
                 msg("\u00a7e[Auto] \u0421\u0435\u0440\u0432\u0435\u0440: \u0430\u0444\u043a. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_AFK_SERVER;
@@ -221,7 +234,6 @@ public class AutoCallManager {
                 return;
             }
 
-            // Проверяем бан
             if (banIncoming.matcher(message).find()) {
                 msg("\u00a7a[Auto] \u0411\u0430\u043d. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                 closeReason = CloseReason.PLAYER_BANNED;
@@ -230,9 +242,7 @@ public class AutoCallManager {
                 return;
             }
 
-            // Проверяем анфриз — НО игнорируем если это эхо нашего /hm spyfrz
             if (unfrzIncoming.matcher(message).find()) {
-                // Проверяем: это не эхо нашей команды?
                 if (!isSpyfrzEcho()) {
                     msg("\u00a7e[Auto] \u0410\u043d\u0444\u0440\u0438\u0437. \u0417\u0430\u0432\u0435\u0440\u0448\u0430\u044e...");
                     closeReason = CloseReason.PLAYER_UNFROZEN;
@@ -249,11 +259,10 @@ public class AutoCallManager {
     public void onOutgoingCommand(String command) {
         if (state == State.IDLE || cancelled) return;
 
-        // Если мы сами отправляем spyfrz — помечаем чтобы игнорировать эхо
         if (command.toLowerCase().contains("hm spyfrz")) {
             ignoreNextSpyfrz = true;
             spyfrzSentTime = System.currentTimeMillis();
-            return; // Не обрабатываем свою же команду
+            return;
         }
 
         if (config.autoCheck && (state == State.WAITING_SPYFRZ || state == State.WAITING_REPORT_OPEN)) {
@@ -274,10 +283,6 @@ public class AutoCallManager {
         }
     }
 
-    /**
-     * Проверяет: сообщение — это эхо нашей команды /hm spyfrz?
-     * Если мы недавно (< 3 сек) отправили spyfrz — игнорируем.
-     */
     private boolean isSpyfrzEcho() {
         if (ignoreNextSpyfrz && (System.currentTimeMillis() - spyfrzSentTime) < SPYFRZ_IGNORE_WINDOW_MS) {
             ignoreNextSpyfrz = false;
@@ -376,14 +381,6 @@ public class AutoCallManager {
         CommandQueue.add("playtime " + currentNick);
     }
 
-    /**
-     * ЛОГИКА:
-     * - lastActivitySec < 7  -> АКТИВЕН -> /hm spyfrz -> переход в WAITING_SPYFRZ
-     *   (репорт НЕ закрывается, мод ждёт результата проверки)
-     * - lastActivitySec >= 7 -> АФК в этот момент
-     *   -> 30с не прошло? -> ждём 3с, проверяем снова
-     *   -> 30с прошло? -> закрываем репорт (afk)
-     */
     private void handlePlaytimeResult(int lastActivitySec) {
         if (cancelled) {
             scanningPlaytime = false;
@@ -396,42 +393,31 @@ public class AutoCallManager {
         long elapsed = System.currentTimeMillis() - playtimeLoopStartTime;
 
         if (lastActivitySec < 7) {
-            // ===== ИГРОК АКТИВЕН -> ВЫЗЫВАЕМ НА ПРОВЕРКУ =====
             scanningPlaytime = false;
             msg("\u00a7a[Auto] \u0418\u0433\u0440\u043e\u043a \u0430\u043a\u0442\u0438\u0432\u0435\u043d! (" + lastActivitySec
                 + "\u0441, \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 #" + playtimeCheckCount
                 + ", " + (elapsed / 1000) + "\u0441 \u043f\u0440\u043e\u0448\u043b\u043e)");
-            msg("\u00a7a[Auto] /hm spyfrz — \u0436\u0434\u0443 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438...");
+            msg("\u00a7a[Auto] /hm spyfrz \u2014 \u0436\u0434\u0443 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438...");
 
-            // Помечаем что spyfrz отправлен нами — чтобы не сработал unfrzIncoming
             ignoreNextSpyfrz = true;
             spyfrzSentTime = System.currentTimeMillis();
 
             CommandQueue.add("hm spyfrz");
 
-            // Переходим в WAITING_SPYFRZ — мод ЖДЁТ
-            // Репорт НЕ закрывается!
-            // Закрытие произойдёт только если:
-            // - Сервер скажет "игрок афк" (afkServerPattern)
-            // - Кто-то забанит (banIncoming)
-            // - Кто-то анфризнет (unfrzIncoming, но НЕ наш spyfrz)
             state = State.WAITING_SPYFRZ;
 
         } else {
-            // ===== ИГРОК АФК В ЭТОТ МОМЕНТ =====
             msg("\u00a7e[Auto] \u0410\u0424\u041a (" + lastActivitySec
                 + "\u0441, \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 #" + playtimeCheckCount
                 + ", " + (elapsed / 1000) + "\u0441/30\u0441)");
 
             if (elapsed < 30000) {
-                // Ещё не прошло 30 секунд — проверяем снова через 3 сек
                 delay(() -> {
                     if (state == State.CHECKING_PLAYTIME_LOOP && !cancelled) {
                         sendPlaytimeRequest();
                     }
                 }, 3000);
             } else {
-                // 30 СЕКУНД ПРОШЛО, ВСЁ ВРЕМЯ БЫЛ АФК -> ЗАКРЫВАЕМ РЕПОРТ
                 scanningPlaytime = false;
                 msg("\u00a7c[Auto] \u0418\u0433\u0440\u043e\u043a \u0431\u044b\u043b \u0410\u0424\u041a \u0432\u0441\u0435 30\u0441 ("
                     + playtimeCheckCount + " \u043f\u0440\u043e\u0432\u0435\u0440\u043e\u043a). \u0417\u0430\u043a\u0440\u044b\u0432\u0430\u044e...");
@@ -478,7 +464,7 @@ public class AutoCallManager {
         switch (closeReason) {
             case PLAYER_BANNED:
                 slotIndex = 15; slotName = "16"; break;
-            case PLAYER_AFK: case PLAYER_AFK_SERVER: case PLAYER_UNFROZEN: default:
+            case PLAYER_AFK: case PLAYER_AFK_SERVER: case PLAYER_UNFROZEN: case PLAYER_OFFLINE: default:
                 slotIndex = 13; slotName = "14"; break;
         }
         msg("\u00a7e[Auto] \u041a\u043b\u0438\u043a \u0441\u043b\u043e\u0442 " + slotName + " (" + closeReason.name() + ")");
@@ -503,6 +489,7 @@ public class AutoCallManager {
             switch (closeReason) {
                 case PLAYER_AFK:
                 case PLAYER_AFK_SERVER:
+                case PLAYER_OFFLINE:
                     chatMsg = "afk";
                     break;
                 case PLAYER_BANNED:

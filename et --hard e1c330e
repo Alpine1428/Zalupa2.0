@@ -1,0 +1,53 @@
+[33m230e36b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m v13: Fix Offline session handling -> stops playtime check and closes as AFK
+[33me1c330e[m Auto build: fix afk chat message + CI setup [2026-03-06 19:36:51]
+[33m7728bbd[m Auto build: fix afk chat message + CI setup [2026-03-06 19:23:48]
+[33m3476476[m Auto build: fix afk chat message + CI setup [2026-03-06 19:13:13]
+[33m6da9c9b[m v12: BANNED sends dash too, AFK sends afk
+[33me83f5f1[m v11: AFK->afk+slot14, BAN->slot16, UNFRZ->dash+slot14, server afk msg, report open tracking
+[33m64b7ed0[m v10: fix dash send via sendChatMessage, close screen first, add /hm spy after close
+[33m7883870[m v10: fix dash send via sendChatMessage, close screen first, add /hm spy after close
+[33mf5f2311[m trigger build: v9 close slots AFK=14 BAN=16 UNFRZ=12
+[33mf84e0eb[m v9: different close slots based on reason (AFK=14, BAN=16, UNFRZ=12)
+[33m03f599f[m v8: send dash via ChatScreen, add /hm spy before next search
+[33mff5aaae[m v7: fix slot index 47->46, 16->15 (0-based indexing)
+[33m073298d[m v6: fix OutgoingChatMixin CallbackInfoReturnable, fix close sequence timing
+[33mc70d427[m v5: add OutgoingChatMixin for self-ban detection, increase close delays
+[33mb9a23e2[m v4: hide playtime messages, fix LMB click slot 47, fix playtime loop
+[33m1f6eed7[m v3: fix ChatScreen cmd dispatch, fix playtime loop, fix activity pattern
+[33m3bd9d14[m fix: remove broken mixins, fix AutoCallManager, fix CommandQueue, add CI/CD
+[33m14d1c0b[m fix: remove broken mixins (SecretKeyMixin, ClientPlayerEntityMixin), fix AutoCallManager, fix CommandQueue, add CI/CD
+[33mdf9cbee[m fix: remove SecretKeyMixin, fix AutoCallManager logic, fix CommandQueue, add CI/CD
+[33m23fb6b1[m fix: server index default 1, full automation loop
+[33mfb1a49b[m fix: replace crashing NetworkHandler mixin with safe ClientPlayerEntity mixin
+[33mf7b4b2f[m fix: remove SecretKeyMixin from mixins.json (caused crash)
+[33m22288d4[m fix: added mixin for outgoing chat/commands (sban fix) and spyfrz via CommandQueue
+[33m450b5a6[m v1.10.0 guaranteed hm command execution
+[33ma1fc1f9[m fix: try command dispatcher first, then chat/packet
+[33m15be48b[m fix: emulate ChatScreen for /hm commands
+[33m7e4c415[m fix: build error (added Modrinth maven for dependencies)
+[33m5db079f[m fix: hybrid command sending (hm via chat, others via packet)
+[33m48d5a7b[m feat: added CommandQueue for reliable command sending
+[33md14c1d9[m fix: reverted to sendCommand + hm spy fix
+[33m7100839[m fix: debug logging + sendChatMessage for all commands
+[33m153421c[m fix: use sendChatMessage for /hm commands compatibility
+[33maf5abc6[m fix: restore sendCommand logic for 1.20.1 (no leading slash)
+[33m5f2966b[m fix: use sendChatMessage(/...) instead of sendCommand to ensure exact syntax
+[33m9afbf59[m fix: clean command execution /hm spy + 3s delay
+[33m4c7a943[m fix: added debug msg for spy command + 3s delay
+[33mc4791a3[m fix: confirmed /hm spy command syntax and 3s delay
+[33md521e40[m fix: 3 second delay after /hm spy
+[33m880bc2a[m fix: logic fix for spy and cycle
+[33m5a0142b[m fix: autocall logic split (cycle vs single)
+[33mfb51b47[m fix: autocall timing, spy command, sban parsing
+[33m44e0783[m feat: AutoCheck mode (cycle autocall)
+[33m7bb8931[m fix: AutoCallManager now uses all filters (detects + playtime)
+[33m91852aa[m fix: use ClientTickEvents for secret menu + force render background
+[33m60356d2[m fix: secret menu visibility (use vanilla widgets)
+[33mba8019a[m add missing resources: fonts, textures, shaders, icon
+[33mcf91af3[m fix: gradle 8.1.1 - fix 502 error
+[33m1021fa4[m v1.3.0: AutoCall, SecretMenu, /hm spy fix
+[33m433d095[m v1.3.0: AutoCall, SecretMenu, /hm spy fix, gradle wrapper, CI
+[33mf4a627c[m v1.3.0: AutoCall, SecretMenu, /hm spy fix, gradle wrapper
+[33m696e470[m v1.3.0: AutoCall, SecretMenu, /hm spy fix, CI build
+[33m3a2ba80[m v1.3.0: AutoCall, SecretMenu, /hm spy fix
+[33m44fa0d3[m Initial commit
